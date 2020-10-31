@@ -6,11 +6,11 @@ import org.apache.spark.sql.functions._
 case class Foo(a:String)
 
 class TestHelper extends  AnyFunSuite {
-  ignore("BigTest") {
+  test("BigTest") {
     assert(1==1)
   }
   
-  ignore("SparkHelperTest") {
+  test("SparkHelperTest") {
     val spark = Helper.getSparkSession("local", "test")
     import spark.implicits._
     val seqFoo = Seq[Foo](Foo("Foo"),Foo("Bar") )
