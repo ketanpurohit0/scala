@@ -6,6 +6,14 @@
     "configurations": [
         {
             "type": "scala",
+            "request": "launch",
+            "name": "Run TestHelper",
+            "testClass": "com.kkp.Unt.TestHelper"
+        },
+
+
+        {
+            "type": "scala",
             "name": "Debug com.kkp.Unt.Main",
             "request": "launch",
             "mainClass": "com.kkp.Unt.Main",
