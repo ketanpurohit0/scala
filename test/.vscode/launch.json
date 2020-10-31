@@ -22,7 +22,14 @@
 
         {
             "type": "scala",
-            "name": "Debug com.kkp.Unt.Main",
+            "name": "Debug Main",
+            "request": "launch",
+            "mainClass": "com.kkp.Unt.Main",
+            "args": []
+        },
+        {
+            "type": "scala",
+            "name": "Run Main",
             "request": "launch",
             "mainClass": "com.kkp.Unt.Main",
             "args": []
