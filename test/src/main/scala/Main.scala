@@ -6,6 +6,7 @@ def main(args: Array[String]): Unit = {
   x.printMe("Hello World")
   val spark = x.getSparkSession("local", "test")
   import spark.implicits._
+  spark.close()
 }
 
 }
