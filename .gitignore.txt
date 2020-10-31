@@ -1,0 +1,5 @@
+.metals/
+.bloop/
+.ammonite/
+metals.sbt
+project/
