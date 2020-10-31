@@ -7,6 +7,14 @@
         {
             "type": "scala",
             "request": "launch",
+            "name": "Debug TestHelper",
+            "testClass": "com.kkp.Unt.TestHelper"
+
+        },
+
+        {
+            "type": "scala",
+            "request": "launch",
             "name": "Run TestHelper",
             "testClass": "com.kkp.Unt.TestHelper"
         },

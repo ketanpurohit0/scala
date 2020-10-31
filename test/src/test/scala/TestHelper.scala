@@ -6,11 +6,11 @@ import org.apache.spark.sql.functions._
 case class Foo(a:String)
 
 class TestHelper extends  AnyFunSuite {
-  test("BigTest") {
+  ignore("BigTest") {
     assert(1==1)
   }
   
-  test("SparkHelperTest") {
+  ignore("SparkHelperTest") {
     val spark = Helper.getSparkSession("local", "test")
     import spark.implicits._
     val seqFoo = Seq[Foo](Foo("Foo"),Foo("Bar") )
@@ -22,5 +22,13 @@ class TestHelper extends  AnyFunSuite {
     assert(df1.count == seqFoo.length)
     assert(df2.count()== seqFoo.length)
     assert(df3.count() == seqFoo.length)
+  }
+
+  test("postGreJdbc") {
+    val url = Helper.getPostGreUrl("postgres","postgres", "foobar_secret")
+    val conn = Helper.getJdbc("postgres", "postgres","foobar_secret")
+    val rs = Helper.select(conn, "select * from foo")
+    rs.last()
+    assert(rs.getRow() > 0)
   }
 }
