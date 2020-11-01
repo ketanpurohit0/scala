@@ -32,6 +32,13 @@ class TestHelper extends  AnyFunSuite {
     assert(rs.getRow() > 0)
   }
 
+    test("postGreJdbcFromConfig") {
+    val conn = Helper.getJdbcFromConfig()
+    val rs = Helper.select(conn, "select * from foo")
+    rs.last()
+    assert(rs.getRow() > 0)
+  }
+
   test("config") {
     import com.typesafe.config._
     val config = ConfigFactory.load()
@@ -44,5 +51,6 @@ class TestHelper extends  AnyFunSuite {
     println(s"url =      $url")
     println(s"username = $username")
     println(s"password = $password")
+
   }
 }

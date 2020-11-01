@@ -24,6 +24,18 @@ object Helper {
     return s"jdbc:postgresql://localhost/${db}?user=${user}&password=${secret}"
   }
 
+  def getPostGreUrlFromConfig() : String = {
+    import com.typesafe.config._
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+    val database = config.getString("jdbc.database")
+
+    return s"${url}${database}?user=${username}&password=${password}"
+  }
+
   def drivers() : Unit = {
     val dr = DriverManager.getDrivers()
     while (dr.hasMoreElements()){
@@ -35,6 +47,10 @@ object Helper {
 
   def getJdbc(db: String, user: String, secret : String) : Connection = {
     return DriverManager.getConnection(getPostGreUrl(db, user, secret))
+  }
+
+  def getJdbcFromConfig() : Connection = {
+    return DriverManager.getConnection(getPostGreUrlFromConfig())
   }
 
   def select(conn : Connection, sql :String) :ResultSet = {
