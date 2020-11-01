@@ -8,4 +8,5 @@ libraryDependencies += "org.scalactic" % "scalactic_2.12" % "3.2.2"
 libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.2.2"
 libraryDependencies += "org.apache.spark" % "spark-core_2.12" % "2.4.3"
 libraryDependencies += "org.apache.spark" % "spark-sql_2.12" % "2.4.3"
+libraryDependencies += "com.typesafe" % "config" % "1.4.1"
 

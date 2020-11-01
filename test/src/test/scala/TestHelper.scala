@@ -31,4 +31,18 @@ class TestHelper extends  AnyFunSuite {
     rs.last()
     assert(rs.getRow() > 0)
   }
+
+  test("config") {
+    import com.typesafe.config._
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    println(s"driver =   $driver")
+    println(s"url =      $url")
+    println(s"username = $username")
+    println(s"password = $password")
+  }
 }
