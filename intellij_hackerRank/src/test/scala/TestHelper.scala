@@ -5,61 +5,32 @@ import org.apache.spark.sql.functions._
 
 import scala.Console.println
 
-case class Foo(a:String)
 
 class TestHelper extends  AnyFunSuite {
-  test("BigTest") {
-    assert(1==1)
-  }
-  
-  test("SparkHelperTest") {
-    val spark = Helper.getSparkSession("local", "test")
-    import spark.implicits._
-    val seqFoo = Seq[Foo](Foo("Foo"),Foo("Bar") )
-    //val df = seqFoo.toDF("col")
-    //df.show()
-    val df1 = seqFoo.toDF()
-    val df2 = seqFoo.toDS()
-    val df3 = df1.alias("df1").join(df2.alias("df2"), expr("df1.a = df2.a"))
-    assert(df1.count == seqFoo.length)
-    assert(df2.count()== seqFoo.length)
-    assert(df3.count() == seqFoo.length)
-  }
-
-  test("postGreJdbc") {
-    val url = Helper.getPostGreUrl("postgres","postgres", "foobar_secret")
-    val conn = Helper.getJdbc("postgres", "postgres","foobar_secret")
-    val rs = Helper.select(conn, "select * from foo")
-    rs.last()
-    assert(rs.getRow() > 0)
-  }
-
-    test("postGreJdbcFromConfig") {
-    val conn = Helper.getJdbcFromConfig()
-    val rs = Helper.select(conn, "select * from foo")
-    rs.last()
-    assert(rs.getRow() > 0)
-  }
-
-  test("config") {
-    import com.typesafe.config._
-    val config = ConfigFactory.load()
-    val driver = config.getString("jdbc.driver")
-    val url = config.getString("jdbc.url")
-    val username = config.getString("jdbc.username")
-    val password = config.getString("jdbc.password")
-
-    println(s"driver =   $driver")
-    println(s"url =      $url")
-    println(s"username = $username")
-    println(s"password = $password")
-
-  }
-
   test("HackerRank:Easy:Hello World N Times") {
 
     def f(n: Int) = {for (i <- 0 until n) println("Hello World")}
+    val n = 6
+    f(n)
+  }
 
-    var n = scala.io.StdIn.readInt
-    f(n)  }
+  test("HackerRank:Easy:Reverse a List") {
+    val inList = List[Int](1,2,2,6,7,11)
+    val r_inList = Helper.reverse_a_list(inList)
+    assert(inList.reverse == r_inList)
+  }
+
+  test("HackerRank:Easy:AreaUnderCurveAndVolume") {
+    val coefficients = List(1,2,3,4,5)
+    val powers = List(6,7,8,9,10)
+    val lowerLimit = 1
+    val upperLimit = 4
+
+    val x=areas_and_volume_under_a_curve.f(List[Int](5,6),List[Int](2,3),2)
+    val area_at_a_point = areas_and_volume_under_a_curve.area(List[Int](5,6),List[Int](2,3),2)
+    val area_under_curve = areas_and_volume_under_a_curve.summation(areas_and_volume_under_a_curve.f, upperLimit, lowerLimit, coefficients, powers)
+    val volume_under_curve = areas_and_volume_under_a_curve.summation(areas_and_volume_under_a_curve.area, upperLimit, lowerLimit, coefficients, powers)
+
+    println(x, area_at_a_point, area_under_curve, volume_under_curve)
+  }
 }

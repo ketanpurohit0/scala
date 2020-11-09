@@ -2,10 +2,9 @@ package com.kkp.Unt
 
 object Main {
 def main(args: Array[String]): Unit = {
-  Helper.printMe("Hello World")
-  val spark = Helper.getSparkSession("local", "test")
-  import spark.implicits._
-  spark.close()
+  def f(n: Int) = {for (i <- 0 until n) println("Hello World")}
+  var n = scala.io.StdIn.readInt
+  f(n)
 }
 
 }
