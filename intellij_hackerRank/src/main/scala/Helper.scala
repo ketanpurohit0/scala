@@ -61,7 +61,7 @@ object areas_and_volume_under_a_curve  {
       for (x <- BigDecimal(lowerLimit.toDouble) to BigDecimal(upperLimit.toDouble) by interval) {
         sum+= func(coefficients, powers, x.toDouble)
       }
-      return sum
+      return sum*interval
     }
   }
 
