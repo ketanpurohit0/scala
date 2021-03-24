@@ -3,7 +3,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
 class tests extends AnyFunSuite {
-  val sparkSession = SparkHelper.getSparkSession("local","C:\\MyWork\\GIT\\python\\spark\\postgresql-42.2.14.jar")
+  val sparkSession = SparkHelper.getSparkSession("local","")
 
   def secondTimer[R] (text :String, block:R): R = {
     val t0 = System.nanoTime()

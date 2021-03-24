@@ -3,3 +3,6 @@
 .ammonite/
 metals.sbt
 project/
+.gradle/
+.idea/
+build/
