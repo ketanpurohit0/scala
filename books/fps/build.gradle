@@ -1,0 +1,16 @@
+plugins {
+    id 'scala'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation ('com.typesafe.scala-logging:scala-logging_2.12:3.9.0')
+    implementation group: 'org.scalactic', name:'scalactic_2.12', version: '3.2.5'
+    implementation group: 'org.scalatest', name:'scalatest_2.12', version: '3.2.5'
+}
