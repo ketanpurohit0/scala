@@ -27,9 +27,27 @@ class ch38 extends AnyFunSuite{
       case x :: xs => sum_tail_recursive(xs, x + currentCumulativeSum)
     }
   }
+  @tailrec
+  private def product_tail_recursive(l:List[Int], currentCumulative : Double): Double = {
+    l match {
+      case Nil => currentCumulative
+      case x :: xs => product_tail_recursive(xs, x * currentCumulative)
+    }
+  }
+  @tailrec
+  private def concate_tail_recursive(l:List[String], currentCumulative : String) : String  = {
+    l match {
+      case Nil => currentCumulative
+      case x :: xs => concate_tail_recursive(xs, if (currentCumulative != "") currentCumulative + "," + x else x)
+    }
+  }
 
   def test_sum(l : List[Int]) : (Long, Long) = {
     timer(l.sum.toLong)
+  }
+
+  def test_prod(l : List[Int]) : (Long, Long) = {
+    timer(l.product)
   }
 
   test("test_sum_non_tail_recursive") {
@@ -91,5 +109,21 @@ class ch38 extends AnyFunSuite{
         assert(s1 == expectedSum)
         println(s"elapsed ns: $t1")
       }
+  }
+
+  test("prod") {
+    val n = 50
+    val l = 1 to n toList
+    val (t,s) = timer(product_tail_recursive(l,1))
+    //assert(s == l.product)
+    println(s"elapsed ns: $t")
+  }
+
+  test("concate") {
+    val n = 10
+    val l = for (i <- n to 1 by -1 )  yield i.toString
+    val (t,s) = timer(concate_tail_recursive(l.toList, ""))
+    assert (s == l.mkString(","))
+    println(s"elapsed ns: $t")
   }
 }
