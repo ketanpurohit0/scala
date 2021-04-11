@@ -3,7 +3,7 @@ import org.scalatest.funsuite.AnyFunSuite
 class ch43 extends AnyFunSuite{
 
   // A quick review of for comprehensions
-  
+
   private case class Person(firstName: String, lastName : String)
 
   val strings = Seq[String]("A","B","C")
