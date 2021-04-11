@@ -22,7 +22,6 @@ class ch45 extends AnyFunSuite{
       // make filter work
       Sequence(elems.filter(p): _*)
     }
-<<<<<<< HEAD
 
     def flatMap[B](f: T => Sequence[B]) : Sequence[B] = {
 
@@ -42,8 +41,6 @@ class ch45 extends AnyFunSuite{
 
     }
 
-=======
->>>>>>> 0cfca36893d3990129619e5b95ac11f68e6ab53a
   }
 
 
