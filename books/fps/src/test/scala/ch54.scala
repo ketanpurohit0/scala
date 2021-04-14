@@ -14,7 +14,13 @@ class ch54 extends AnyFunSuite{
     (System.nanoTime() - t0, r)
   }
 
-  case class StringToInt(run:String => Int)
+  case class StringToInt(run:String => Int, name:String)
+
+  def f2paramgroups (s:String)(f:String => Int) = f(s)
+
+  case class s2i(s:String)(f:String=>Int) {
+    def funcEval = f(s)
+  }
 
 
   test("traitPerson") {
@@ -37,8 +43,25 @@ class ch54 extends AnyFunSuite{
   }
 
   test("stringToInt") {
-    val stringToInt = StringToInt {s : String => s.length}
+    val stringToInt = StringToInt ({s : String => s.length}, "Ketan")
     assert(stringToInt.run("Ketan") == 5)
+    assert(stringToInt.run(stringToInt.name) == 5)
+
+    def namedFunc(s: String) = s.length
+
+    val stringToInt2 = StringToInt(namedFunc, "Ketan")
+    assert(stringToInt2.run(stringToInt2.name) == 5)
+
+  }
+
+  test("f2paramgroups") {
+    val r = f2paramgroups("Ketan") (s => s.length)
+    assert(r == 5)
+  }
+
+  test("s2i") {
+    val si = s2i("Ketan")({s: String => s.length})
+    assert(si.funcEval == 5)
   }
 
 }
