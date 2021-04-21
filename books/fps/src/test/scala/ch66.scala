@@ -32,7 +32,7 @@ class ch66 extends AnyFunSuite{
   }
 
   test("pattern") {
-    val x = Seq[Any](Map[String, List[String]](), Map[String,List[Int]](), Map[Int,Int](), Map[String,String]())
+    val x = Seq[Any](Map[String, List[String]]("s" -> List("a","b")), Map[String,List[Int]]("s" -> List(1,2)), Map[Int,Int](3->3), Map[String,String]("a" -> "b"))
     x.foreach(item =>
       item match {
         case m1: Map[String@unchecked, List[String]@unchecked] => {println("Map[String, List[String]]")}
@@ -40,6 +40,24 @@ class ch66 extends AnyFunSuite{
         case m3: Map[Int@unchecked,Int@unchecked] => println("Map[Int,Int]")
         case _ => println("OTHER")
       })
+  }
+
+  test("pattern_shapeless") {
+    import shapeless._
+    val map_String_List_String = TypeCase[Map[String, List[String]]]
+    val map_String_List_Int = TypeCase[Map[String, List[Int]]]
+    val map_Int_Int = TypeCase[Map[Int,Int]]
+
+    val x = Seq[Any](Map[String, List[String]]("s" -> List("a","b")), Map[String,List[Int]]("s" -> List(1,2)), Map[Int,Int](3->3), Map[String,String]("a" -> "b"))
+    val item = Map[String, List[Int]]()
+    x.foreach(item =>
+    item match {
+        case map_String_List_String(item) => {println("Map[String, List[String]]")}
+        case map_String_List_Int(item) => println("Map[String, List[Int]]")
+        case map_Int_Int(item) => println("Map[Int,Int]")
+        case _ => println("OTHER")
+      })
+
   }
 
 }

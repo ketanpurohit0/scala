@@ -13,4 +13,6 @@ dependencies {
     implementation ('com.typesafe.scala-logging:scala-logging_2.12:3.9.0')
     implementation group: 'org.scalactic', name:'scalactic_2.12', version: '3.2.5'
     implementation group: 'org.scalatest', name:'scalatest_2.12', version: '3.2.5'
+    implementation group: 'com.chuusai', name: 'shapeless_2.12', version: '2.3.3'
+
 }
