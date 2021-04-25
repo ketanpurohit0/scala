@@ -28,5 +28,21 @@ class ch71 extends AnyFunSuite{
     assert(r.value == 24 && r.log.size == 3)
   }
 
+  test("foldInt") {
+    val funcs = Seq(f(1), f(2), g(3))
+
+    funcs.foreach(f => println(f.value,f.log))
+    var llogs = Seq[String]()
+    funcs.foreach(f => llogs ++= f.log)
+
+    val logs = funcs.foldLeft(Seq[String]())((l,f) => {
+      l ++ f.log
+    })
+
+    // logs.foreach(l => println(l))
+    // llogs.foreach(l => println(l))
+    assert(logs == llogs)
+  }
+
 
 }
