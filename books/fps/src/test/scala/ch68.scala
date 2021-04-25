@@ -2,14 +2,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class ch68 extends AnyFunSuite{
 
-//  case class Debuggable[A](value: A) {
-//    def map[B](f: A => B) : Debuggable[B] = {
-//      Debuggable[B](f(value))
-//    }
-//    def flatMap[B](f: A => Debuggable[B]): Debuggable[B] = {
-//        f(value)
-//      }
-//  }
+
 
   case class Debuggable(value: Int, message: String) {
     def map(f: Int => Int): Debuggable = {
