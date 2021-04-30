@@ -1,28 +1,28 @@
 
-class IO[A] private (constructorCodeBlock: => A) {
+class IOM[A] private(constructorCodeBlock: => A) {
 
   def run = constructorCodeBlock
 
-  def flatMapOrig[B](f: A => IO[B]): IO[B] = IO(f(run).run)
+  def flatMapOrig[B](f: A => IOM[B]): IOM[B] = IOM(f(run).run)
 
-  def flatMap[B](customAlgorithm: A => IO[B]): IO[B] = {
-    val result1: IO[B] = customAlgorithm(run)
+  def flatMap[B](customAlgorithm: A => IOM[B]): IOM[B] = {
+    val result1: IOM[B] = customAlgorithm(run)
     val result2: B = result1.run
-    IO(result2)
+    IOM(result2)
   }
 
-  def map[B](f: A => B): IO[B] = flatMap(a => IO(f(a)))
+  def map[B](f: A => B): IOM[B] = flatMap(a => IOM(f(a)))
 
 }
 
-object IO {
-  def apply[A](a: => A): IO[A] = new IO(a)
+object IOM {
+  def apply[A](a: => A): IOM[A] = new IOM(a)
 }
 
 object io_monad {
 
-  def getLine: IO[String] = IO(scala.io.StdIn.readLine())
-  def putStrLn(s: String): IO[Unit] = IO(println(s))
+  def getLine: IOM[String] = IOM(scala.io.StdIn.readLine())
+  def putStrLn(s: String): IOM[Unit] = IOM(println(s))
 }
 
 
@@ -40,7 +40,7 @@ object IOTest1 extends App {
 
 object IOTest2 extends App {
 
-  def forExpression : IO[Unit] = for {
+  def forExpression : IOM[Unit] = for {
     _ <- io_monad.putStrLn("First name?")
     firstName <- io_monad.getLine
     _ <- io_monad.putStrLn("Last name?")
@@ -56,7 +56,7 @@ object IOTest2 extends App {
 
 object IOTest3 extends App {
 
-  def forExpression : IO[String] = for {
+  def forExpression : IOM[String] = for {
     _ <- io_monad.putStrLn("First name?")
     firstName <- io_monad.getLine
     _ <- io_monad.putStrLn("Last name?")
@@ -68,4 +68,15 @@ object IOTest3 extends App {
   } yield fNameUC
 
   val r = forExpression.run
+}
+
+object IOTestRec extends App {
+  def forExpression : IOM[Unit] = for {
+    _ <- io_monad.putStrLn("Enter a string?")
+    inputStr <- io_monad.getLine
+    _ <- io_monad.putStrLn(s"You entered $inputStr")
+    _ <- if (inputStr == "quit") IOM(Unit) else forExpression
+  } yield Unit
+
+  forExpression.run
 }
