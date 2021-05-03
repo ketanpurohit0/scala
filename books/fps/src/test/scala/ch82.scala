@@ -15,8 +15,8 @@ class ch82 extends AnyFunSuite{
   case class GolfState(distance: Int)
 
   def nextStroke(distance: Int) : State[GolfState, Int] = State {
-    (previousState: GolfState) => {
-        val newValue = previousState.distance + distance
+    (s: GolfState) => {
+        val newValue = s.distance + distance
         (GolfState(newValue), newValue)
       }
   }
