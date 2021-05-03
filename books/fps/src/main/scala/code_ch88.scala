@@ -31,17 +31,17 @@ object IO {
 
 
 case class StateT[M[_], S, A](run: S => M[(S, A)]) {
-  def flatMap[B](g: A => StateT[M, S, B])(implicit M: Monad[M]): StateT[M, S, B] = StateT { (s0: S) =>
-    M.flatMap(run(s0)) {
+  def flatMap[B](g: A => StateT[M, S, B])(implicit m: Monad[M]): StateT[M, S, B] = StateT { (s0: S) =>
+    m.flatMap(run(s0)) {
       case (s1, a) => g(a).run(s1)
     }
   }
 
-  def map[B](f: A => B)(implicit M: Monad[M]): StateT[M, S, B] = flatMap(a => StateT.point(f(a)))
+  def map[B](f: A => B)(implicit m: Monad[M]): StateT[M, S, B] = flatMap(a => StateT.point(f(a)))
 }
 
 object StateT {
-  def point[M[_], S, A](v: A)(implicit M: Monad[M]): StateT[M, S, A] = StateT(run = s => M.lift((s, v)))
+  def point[M[_], S, A](v: A)(implicit m: Monad[M]): StateT[M, S, A] = StateT(run = s => m.lift((s, v)))
 }
 
 object LoopWithQuitLotsOfDebug extends App {
@@ -101,6 +101,12 @@ object LoopWithQuitLotsOfDebug extends App {
     IO(newState, newSum)
   }
 
+  def doMultiplyWithStateT(newValue: Int): StateT[IO, SumState, Int] = StateT { (oldState: SumState) =>
+    val newSum = oldState.sum * newValue
+    val newState = oldState.copy(sum = newSum)
+    IO(newState, newSum)
+  }
+
   /**
    * the purpose of this function is to “lift” an IO action into the StateT monad.
    * given an IO instance named `io` as input, the anonymous function transforms
@@ -140,5 +146,15 @@ object LoopWithQuitLotsOfDebug extends App {
 
   val result = sumLoop.run(SumState(0)).run
   println(s"Final SumState: ${result}")
+
+  def fixedValuesLoop : StateT[IO, SumState, Unit] = for {
+    _ <- doSumWithStateT(1)
+    _ <- doSumWithStateT(2)
+    r <- doMultiplyWithStateT(3)
+  } yield r
+
+  val r = fixedValuesLoop.run(SumState(0))
+  val (s, v) = r.run
+  assert(s.sum == 9 && v == Unit)
 
 }
