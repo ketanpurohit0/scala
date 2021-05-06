@@ -1,3 +1,4 @@
+package Foo
 import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import scala.util.Either
