@@ -131,14 +131,15 @@ object Foo extends App {
 
   case class User(name: String)
   case class Address(postCode: String)
-  def findUserById(id: Long): Future[User] = {Future(User("Foo"))}
-  def findAddressByUser(user: User): Future[Address] = Future(Address("10092"))
-  val id = 1
-  val r = for {
-    user <- findUserById(id)
-    address <- findAddressByUser(user)
-  } yield address
+  def findUserById(id: Long): Future[Option[User]] = {Future(Option(User("Foo")))}
+  def findAddressByUser(user: User): Future[Option[Address]] = Future(Option(Address("10092")))
+  def findAddressByUserId(id: Long): Future[Option[Address]] =
+    findUserById(id).flatMap {
+      case Some(user) => findAddressByUser(user)
+      case None       => Future.successful(None)
+    }
 
+  val r = findAddressByUserId(1)
   r.onComplete(r2 =>
   r2 match {
     case Success(value) => println("on complete", value)
@@ -147,7 +148,7 @@ object Foo extends App {
 
   Await.result(r, 1000 millis)
   r.foreach(x=> {println("foreach", x)})
-  r.foreach( x => assert(x.postCode == "10092"))
+  r.foreach( x => assert(x match { case Some(value) => value.postCode == "10092"}))
 
 }
 
