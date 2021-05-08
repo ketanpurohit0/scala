@@ -147,6 +147,7 @@ object Foo extends App {
 
   Await.result(r, 1000 millis)
   r.foreach(x=> {println("foreach", x)})
+  r.foreach( x => assert(x.postCode == "10092"))
 
 }
 
