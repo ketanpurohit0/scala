@@ -139,6 +139,27 @@ object Foo extends App {
       case None       => Future.successful(None)
     }
 
+  def findAddressByUserId2(id: Long): Future[Option[Address]] = {
+    (for {
+      user <- FutOpt(findUserById(id))
+      address <- FutOpt(findAddressByUser(user))
+    } yield address).value
+  }
+
+  case class FutOpt[A](value:Future[Option[A]]) {
+    def map[B](f : A => B) : FutOpt[B] = {
+      FutOpt(value.map(v => v.map(f)))
+    }
+
+    def flatMap[B](f: A => FutOpt[B]): FutOpt[B] = {
+      val r = value.flatMap(opt => opt match {
+        case Some(a) => f(a).value
+        case None => Future.successful(None)
+      })
+      FutOpt(r)
+    }
+  }
+
   val r = findAddressByUserId(1)
   r.onComplete(r2 =>
   r2 match {
@@ -150,6 +171,36 @@ object Foo extends App {
   r.foreach(x=> {println("foreach", x)})
   r.foreach( x => assert(x match { case Some(value) => value.postCode == "10092"}))
 
+  val r2 = findAddressByUserId2(1)
+  Await.result(r2,  1000 millis)
+  r2.foreach(x => assert(x match {case Some(value) => value.postCode == "10092"}))
+
+  import cats.data.OptionT
+
+  def findAddressByUserId3(id: Long) : Future[Option[Address]] = {
+    (
+      for {
+        user <- OptionT(findUserById(id))
+        address <- OptionT(findAddressByUser(user))
+      } yield address
+    ).value
+  }
+
+  def findAddressByUserId4(id: Long) : OptionT[Future,Address] = {
+      for {
+        user <- OptionT(findUserById(id))
+        address <- OptionT(findAddressByUser(user))
+      } yield address
+  }
+
+  val r3 = findAddressByUserId3(1)
+  Await.result(r3,  1000 millis)
+  r3.foreach(x => assert(x match {case Some(value) => value.postCode == "10092"}))
+
+
+  val r4 = findAddressByUserId4(1)
+  Await.result(r4.value,  1000 millis)
+  r4.value.foreach(x => assert(x match {case Some(value) => value.postCode == "10092"}))
 }
 
 
