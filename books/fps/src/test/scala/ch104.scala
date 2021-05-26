@@ -5,7 +5,7 @@ import java.awt.Color
 class ch104 extends AnyFunSuite{
 
   trait  Animal
-  abstract class AnimalWithTail(tailColor: Color) extends Animal
+  abstract case class AnimalWithTail(tailColor: Color) extends Animal
   trait DogTailServices {
     this: AnimalWithTail =>
     def wagTail = println("wag Tail")
