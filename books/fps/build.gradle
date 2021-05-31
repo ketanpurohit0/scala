@@ -15,5 +15,6 @@ dependencies {
     implementation group: 'org.scalatest', name:'scalatest_2.12', version: '3.2.5'
     implementation group: 'com.chuusai', name: 'shapeless_2.12', version: '2.3.3'
     implementation group: 'org.typelevel', name: 'cats-effect_2.12', version: '3.1.0'
+    implementation group: 'com.typesafe.slick', name: 'slick_2.12', version: '3.3.3'
 
 }
