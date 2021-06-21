@@ -2,7 +2,7 @@ package main.scala.com.rockthejvm
 
 object ContextualAbstractions {
 // TODO - Will required scala 3
-  
+
 //  val aList = List(2,1,3,4)
 //  val anOrderedList = aList.sorted
 //  given descendingOrder: Ordering[Int] = Ordering.fromLessThan(_ > _)
