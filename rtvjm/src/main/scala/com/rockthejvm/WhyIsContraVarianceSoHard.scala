@@ -48,8 +48,8 @@ object WhyIsContraVarianceSoHard extends App {
   // but a elephant vet cannot heal a dog
   // so contravariance required a 'more general' ability
   // the following will not compile
-  val vet3 = new Vet[Elephant]{}
-  vet3.heal(lassie)
+  //val vet3 = new Vet[Elephant]{}
+  //vet3.heal(lassie)
 
 
   // rule of thumb
