@@ -1,9 +1,9 @@
 package com.kkp.Unt
 
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{StructField, StructType, IntegerType,LongType, BooleanType, StringType}
+import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType, StringType, StructField, StructType}
 
 case class Foo(a:String)
 
@@ -18,6 +18,16 @@ class TestHelper extends  AnyFunSuite {
     val rdd = spark.sparkContext.parallelize(replicateList(data,n))
     val df = rdd.toDF(deptColumns:_*)
     df
+  }
+
+  def modificationList(): List[(String, String, String)] = {
+    return List[(String, String, String)](
+    ("dept_name", "Marketing2.0", "dept_name = 'Marketing'"),
+    ("dept_name", "Marketing2.0", "dept_name = 'XMarketing'"),
+    ("dept_name", "Marketing2.0", "dept_name = 'XMarketing'"),
+    ("dept_name", "xMarketing2.0", "dept_name = 'XMarketing'"),
+    ("dept_name", "Marketing2.0", "dept_name = 'Marketing'")
+    )
   }
 
   def replicateList[A](list: List[A], n: Int): List[A] = {
@@ -75,8 +85,42 @@ class TestHelper extends  AnyFunSuite {
 
   test("largeDf") {
     val n = math.pow(2, 20).toInt
+    spark.sparkContext.setCheckpointDir("checkpointing_folder")
     val df = makeLargeDf(spark, n)
     assert(df.count() == 6 * n)
+
+    val rule_scale = math.pow(2, 6).toInt
+    val rules = replicateList(modificationList(), rule_scale)
+    import org.apache.spark.sql.functions._
+
+    val flag_col = "isModified"
+    val partition_cols = List[Column](col("dept_name"), col("dept_id"))
+    val check_point_interval = 5
+
+    var df_base = df.withColumn(flag_col, lit(false)).repartition(8, partition_cols:_*).cache()
+    println(df_base.rdd.getNumPartitions)
+
+    var check_point_stale: Boolean = true
+
+    for ((mod, index) <- rules.zipWithIndex) {
+      // println(index, mod)
+      df_base = df_base.withColumn(flag_col, when(expr(mod._3), lit(true)).otherwise(col(flag_col)))
+      .withColumn(mod._1, when(expr(mod._3), lit(mod._2)).otherwise(col(mod._1)))
+      check_point_stale = true
+      if (index % check_point_interval == 0) {
+        df_base = df_base.cache().checkpoint(true)
+        check_point_stale = false
+      }
+    }
+
+    if (check_point_stale) {
+      df_base = df_base.cache().checkpoint(true)
+    }
+
+    df_base = df_base.filter(s"$flag_col = true").drop(flag_col).cache()
+    val rows_affected = df_base.count()
+    println(s"Rows affected: $rows_affected")
+
   }
 
   test("replicateList") {
