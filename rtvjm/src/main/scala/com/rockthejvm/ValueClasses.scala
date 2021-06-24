@@ -1,4 +1,4 @@
-package main.scala.com.rockthejvm
+package com.rockthejvm
 
 object ValueClasses extends App {
   case class Product(code: String, desc: String)
@@ -43,7 +43,7 @@ object ValueClasses extends App {
     override def findByDesc(desc: Description): List[Product] = ???
   }
 // Does not complile after BarCode apply is written
-//  aBackend2.findByCode(BarCode(aCode))
+//aBackend2.findByCode(BarCode(aCode))
 
   // 2 - values class
   // no run-time overhead
