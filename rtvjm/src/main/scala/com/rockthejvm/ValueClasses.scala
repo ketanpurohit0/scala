@@ -1,5 +1,8 @@
 package com.rockthejvm
 
+import io.estatico.newtype.Coercible
+import io.estatico.newtype.macros.newtype
+
 object ValueClasses extends App {
   case class Product(code: String, desc: String)
 
@@ -64,4 +67,24 @@ object ValueClasses extends App {
   BarCodeVC("1-12345-123456") match {
     case BarCodeVC(code) => println(code)
   }
+
+//  // use NewType
+//  import io.estatico.newtype.ops._
+//
+//  @newtype case class BarCodeNT(val code: String)
+//  val stringToBarCode: Coercible[String, com.rockthejvm.ValueClasses.BarCodeNT] = Coercible[String, com.rockthejvm.ValueClasses.BarCodeNT]
+//  object BarCodeNT {
+//    def apply(code: String) : Either[String, BarCodeNT] = Either.cond(
+//      code.matches("\\d-\\d{5}\\d{5}"),
+//      code.coerce,
+//      "Code is invalid"
+//    )
+//  }
+//
+//  val aBarCodeNT = BarCodeNT("foo")
+//  aBarCodeNT match {
+//    case Left(value) => println(s"An error, $value")
+//    case Right(value) => println(value)
+//  }
+
 }
