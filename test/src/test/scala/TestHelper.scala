@@ -1,11 +1,30 @@
 package com.kkp.Unt
 
+import org.apache.spark.sql.{DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
+import org.apache.spark.sql.types.{StructField, StructType, IntegerType,LongType, BooleanType, StringType}
 
 case class Foo(a:String)
 
 class TestHelper extends  AnyFunSuite {
+
+  val spark = Helper.getSparkSession("local[*]", "test")
+
+  def makeLargeDf(spark: SparkSession, n: Int) : DataFrame = {
+    val data : List[(Int, String, Int)] = List[(Int, String, Int)]((1, "Finance", 10), (2, "Marketing", 20), (3, "Sales", 30), (4, "IT", 40), (5, "CTS", 41), (6, "CTS", 42))
+    var deptColumns = List("ID", "dept_name", "dept_id")
+    import spark.implicits._
+    val rdd = spark.sparkContext.parallelize(replicateList(data,n))
+    val df = rdd.toDF(deptColumns:_*)
+    df
+  }
+
+  def replicateList[A](list: List[A], n: Int): List[A] = {
+    val b = 1 to n
+    b.map(x => list).flatMap(y => y).toList
+  }
+
   test("BigTest") {
     assert(1==1)
   }
@@ -52,5 +71,16 @@ class TestHelper extends  AnyFunSuite {
     println(s"username = $username")
     println(s"password = $password")
 
+  }
+
+  test("largeDf") {
+    val n = math.pow(2, 20).toInt
+    val df = makeLargeDf(spark, n)
+    assert(df.count() == 6 * n)
+  }
+
+  test("replicateList") {
+    val list = replicateList(List(1,2,3), 3)
+    assert(list == List(1,2,3,1,2,3,1,2,3))
   }
 }
