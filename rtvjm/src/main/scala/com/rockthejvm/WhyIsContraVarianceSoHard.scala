@@ -23,14 +23,14 @@ object WhyIsContraVarianceSoHard extends App {
 
   // following fails to compile
   // Elephant does not subclass Animal
-  //class MyVariantList[+T]
-  //val list2: MyVariantList[Animal] = new MyVariantList[Elephant]
+//  class MyVariantList[+T]
+//  val list2: MyVariantList[Animal] = new MyVariantList[Elephant]
 
   class MyContraVariantList[-T]
   val contravariant_list : MyContraVariantList[Dog] = new MyContraVariantList[Animal]
   // following fails to compile
   // rhs must be higher up the hiearachy or same
-  //val variant_list : MyContraVariantList[Animal] = new MyContraVariantList[Dog]
+//  val variant_list : MyContraVariantList[Animal] = new MyContraVariantList[Dog]
 
   // contravariance example
   trait Vet[-T] {
@@ -48,8 +48,8 @@ object WhyIsContraVarianceSoHard extends App {
   // but a elephant vet cannot heal a dog
   // so contravariance required a 'more general' ability
   // the following will not compile
-  //val vet3 = new Vet[Elephant]{}
-  //vet3.heal(lassie)
+//  val vet3 = new Vet[Elephant]{}
+//  vet3.heal(lassie)
 
 
   // rule of thumb
