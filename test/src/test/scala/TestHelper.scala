@@ -4,6 +4,9 @@ import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType, StringType, StructField, StructType}
+import sun.awt.image.ImagingLib
+
+import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
 
@@ -128,5 +131,72 @@ class TestHelper extends  AnyFunSuite {
   test("replicateList") {
     val list = replicateList(List(1,2,3), 3)
     assert(list == List(1,2,3,1,2,3,1,2,3))
+  }
+
+  test("parallelLogging") {
+
+    def log[R](block: => R): R = {
+      val t0 = System.nanoTime()
+      val result = block    // call-by-name
+      val t1 = System.nanoTime()
+      println("Elapsed time: " + (t1 - t0) + "ns")
+      result
+    }
+
+    def loggingWithPrintln(s:String) : Unit = {
+      println(s)
+    }
+
+    def loggingWithThreadId(s: Any) : Unit = {
+      println(s"[${Thread.currentThread().getId()}],$s" )
+    }
+
+    def loggingWithThreadIdAndCollection(s: Any)(implicit log: ListBuffer[String]): Unit = {
+        log += s"[${Thread.currentThread().getId()}],$s"
+    }
+
+    case class Foo(a: Int, b: String, c: Double)
+
+
+    class Activity(activityName: String) {
+      implicit val logCollector = ListBuffer[String]()
+      val randomNumberGenerator = new scala.util.Random(activityName.hashCode())
+      val foo = Foo(0, "First", 0.0)
+      def action(): ListBuffer[String] = {
+        loggingWithThreadIdAndCollection(activityName, "First Hi")
+        loggingWithThreadIdAndCollection(activityName, foo)
+        Thread.sleep(randomNumberGenerator.nextInt(4) * 1000)
+        otherAction()
+        loggingWithThreadIdAndCollection(activityName, "Lastly Foo")
+        val lastFoo = Foo(2, "Last", 2.0)
+        loggingWithThreadIdAndCollection(activityName, lastFoo)
+        logCollector
+      }
+
+      def otherAction(): Unit = {
+        val foo = Foo(1, "Middle", 1.0)
+        loggingWithThreadIdAndCollection(activityName, foo)
+        loggingWithThreadIdAndCollection(activityName, "Middle otherAction")
+      }
+    }
+
+    val foo = Foo(58, "FooBar", 55.5)
+    val list = List("##1","##2","##3", "##4")
+    val list2 = replicateList(list, 1).par
+    // logging is intermingled
+    list2.foreach(s => loggingWithPrintln(s))
+    list2.foreach(s => loggingWithThreadId(s, "Hello", foo))
+    list2.foreach(s => {
+      // start a worker
+      val activity = new Activity(s)
+      // do some activity
+      val logCollector = activity.action()
+      // output log in synchronized format
+      this.synchronized {
+        println("START LOG FOR ---", s)
+        logCollector.map(x => println(x))
+        println("END LOG FOR -----", s)
+      }
+    })
   }
 }
