@@ -1,5 +1,6 @@
 package com.kkp.Unt
 
+import com.typesafe.config.ConfigFactory
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
@@ -83,10 +84,27 @@ class TestHelper extends  AnyFunSuite {
     println(s"url =      $url")
     println(s"username = $username")
     println(s"password = $password")
-
   }
 
-  test("largeDf") {
+  test("largeDfWriteToDB") {
+    val n = math.pow(2, 20).toInt
+    val df = makeLargeDf(spark, n)
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    df.select("dept_id", "ID", "dept_name").write.mode("append")
+      .format("jdbc")
+      .option("url", url)
+      .option("dbtable", "TARGET_FOR_SPARK_DF")
+      .option("user", username)
+      .option("password", password)
+      .save()
+  }
+
+  test("largeDfAdjustment") {
     val n = math.pow(2, 20).toInt
     spark.sparkContext.setCheckpointDir("checkpointing_folder")
     val df = makeLargeDf(spark, n)
@@ -183,7 +201,7 @@ class TestHelper extends  AnyFunSuite {
     }
 
     val foo = Foo(58, "FooBar", 55.5)
-    val list = List("##1","##2","##3", "##4")
+    val list = List("##1","##2","##3", "##4", "##5", "##6", "##7")
     val list2 = replicateList(list, 1).par
     // logging is intermingled
     //list2.foreach(s => loggingWithPrintln(s))
