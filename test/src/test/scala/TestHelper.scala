@@ -135,7 +135,7 @@ class TestHelper extends  AnyFunSuite {
 
   test("parallelLogging") {
 
-    def log[R](block: => R): R = {
+    def timer[R](block: => R): R = {
       val t0 = System.nanoTime()
       val result = block    // call-by-name
       val t1 = System.nanoTime()
@@ -160,17 +160,21 @@ class TestHelper extends  AnyFunSuite {
 
     class Activity(activityName: String) {
       implicit val logCollector = ListBuffer[String]()
-      val randomNumberGenerator = new scala.util.Random(activityName.hashCode())
+      val randomNumberGenerator = new scala.util.Random()
       val foo = Foo(0, "First", 0.0)
       def action(): ListBuffer[String] = {
-        loggingWithThreadIdAndCollection(activityName, "First Hi")
-        loggingWithThreadIdAndCollection(activityName, foo)
-        Thread.sleep(randomNumberGenerator.nextInt(4) * 1000)
-        otherAction()
-        loggingWithThreadIdAndCollection(activityName, "Lastly Foo")
-        val lastFoo = Foo(2, "Last", 2.0)
-        loggingWithThreadIdAndCollection(activityName, lastFoo)
-        logCollector
+        timer {
+          loggingWithThreadIdAndCollection(activityName, "First Hi")
+          loggingWithThreadIdAndCollection(activityName, foo)
+          val sleepInterval = randomNumberGenerator.nextInt(16) * 1000
+          loggingWithThreadIdAndCollection(activityName, "Sleep Interval:", sleepInterval)
+          Thread.sleep(sleepInterval)
+          otherAction()
+          loggingWithThreadIdAndCollection(activityName, "Lastly Foo")
+          val lastFoo = Foo(2, "Last", 2.0)
+          loggingWithThreadIdAndCollection(activityName, lastFoo)
+          logCollector
+        }
       }
 
       def otherAction(): Unit = {
@@ -184,9 +188,9 @@ class TestHelper extends  AnyFunSuite {
     val list = List("##1","##2","##3", "##4")
     val list2 = replicateList(list, 1).par
     // logging is intermingled
-    list2.foreach(s => loggingWithPrintln(s))
-    list2.foreach(s => loggingWithThreadId(s, "Hello", foo))
-    list2.foreach(s => {
+    //list2.foreach(s => loggingWithPrintln(s))
+    //list2.foreach(s => loggingWithThreadId(s, "Hello", foo))
+    list2.foreach(s => timer({
       // start a worker
       val activity = new Activity(s)
       // do some activity
@@ -197,6 +201,6 @@ class TestHelper extends  AnyFunSuite {
         logCollector.map(x => println(x))
         println("END LOG FOR -----", s)
       }
-    })
+    }))
   }
 }
