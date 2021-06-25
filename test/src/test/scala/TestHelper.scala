@@ -97,7 +97,7 @@ class TestHelper extends  AnyFunSuite {
     val partition_cols = List[Column](col("dept_name"), col("dept_id"))
     val check_point_interval = 5
 
-    var df_base = df.withColumn(flag_col, lit(false)).repartition(4, partition_cols:_*).cache()
+    var df_base = df.withColumn(flag_col, lit(false)).repartition(8, partition_cols:_*).cache()
     println(df_base.rdd.getNumPartitions)
 
     var check_point_stale: Boolean = true
@@ -110,13 +110,13 @@ class TestHelper extends  AnyFunSuite {
       if (index % check_point_interval == 0) {
         // checkpointing creates a set of files in the checkpoint folder , see spark.sparkContext.setCheckpointDir
         // these need to be removed
-        df_base = df_base.cache().checkpoint(true)
+        df_base = df_base.checkpoint(true)
         check_point_stale = false
       }
     }
 
     if (check_point_stale) {
-      df_base = df_base.cache().checkpoint(true)
+      df_base = df_base.checkpoint(true)
     }
 
     df_base = df_base.filter(s"$flag_col = true").drop(flag_col).cache()
