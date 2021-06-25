@@ -163,7 +163,6 @@ class TestHelper extends  AnyFunSuite {
       val randomNumberGenerator = new scala.util.Random()
       val foo = Foo(0, "First", 0.0)
       def action(): ListBuffer[String] = {
-        timer {
           loggingWithThreadIdAndCollection(activityName, "First Hi")
           loggingWithThreadIdAndCollection(activityName, foo)
           val sleepInterval = randomNumberGenerator.nextInt(16) * 1000
@@ -174,7 +173,6 @@ class TestHelper extends  AnyFunSuite {
           val lastFoo = Foo(2, "Last", 2.0)
           loggingWithThreadIdAndCollection(activityName, lastFoo)
           logCollector
-        }
       }
 
       def otherAction(): Unit = {
