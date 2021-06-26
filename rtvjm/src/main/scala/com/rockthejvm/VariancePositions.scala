@@ -40,9 +40,9 @@ object VariancePositions extends  App {
   // Same problem as above
 //  class Vet3[-T](var favouriteAnimal: T)
 
-  class MutableOption[+T](var contents: T)
-  val maybeAnimal: MutableOption[Animal] = new MutableOption[Dog](new Dog)
-  maybeAnimal.contents = new Cat
+//  class MutableOption[+T](var contents: T)
+//  val maybeAnimal: MutableOption[Animal] = new MutableOption[Dog](new Dog)
+//  maybeAnimal.contents = new Cat
 
 //    abstract class MyList2[+T] {
 //      def add(element: T) : MyList2[T] = ???
