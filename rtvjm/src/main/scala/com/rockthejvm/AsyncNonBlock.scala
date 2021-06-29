@@ -4,7 +4,7 @@ import akka.actor.typed.scaladsl.Behaviors
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
-
+// also see https://stackoverflow.com/questions/49594664/scala-global-executioncontext-vs-executioncontextexecutorservice
 object AsyncNonBlocking {
 
   // sync+blocking on this thread
@@ -51,5 +51,8 @@ object AsyncNonBlocking {
   def main(args: Array[String]): Unit = {
     asyncNonBlockingResult.onComplete(x => println(x.get))
     println("foo")
+
+    //rootActor.terminate()
+    //promiseResolver.terminate()
   }
 }
