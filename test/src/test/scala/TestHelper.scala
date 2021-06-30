@@ -15,6 +15,15 @@ class TestHelper extends  AnyFunSuite {
 
   val spark = Helper.getSparkSession("local[*]", "test")
 
+  def loggingWithThreadIdAndCollection(s: Any)(implicit log: ListBuffer[String]): Unit = {
+    log += s"[${Thread.currentThread().getId()}],$s"
+  }
+
+  def printLog(log: ListBuffer[String]) : Unit = {
+    log.map(l => println(l))
+  }
+
+
   def makeLargeDf(spark: SparkSession, n: Int) : DataFrame = {
     val data : List[(Int, String, Int)] = List[(Int, String, Int)]((1, "Finance", 10), (2, "Marketing", 20), (3, "Sales", 30), (4, "IT", 40), (5, "CTS", 41), (6, "CTS", 42))
     var deptColumns = List("ID", "dept_name", "dept_id")
@@ -220,9 +229,6 @@ class TestHelper extends  AnyFunSuite {
       println(s"[${Thread.currentThread().getId()}],$s" )
     }
 
-    def loggingWithThreadIdAndCollection(s: Any)(implicit log: ListBuffer[String]): Unit = {
-        log += s"[${Thread.currentThread().getId()}],$s"
-    }
 
     case class Foo(a: Int, b: String, c: Double)
 
@@ -295,13 +301,23 @@ class TestHelper extends  AnyFunSuite {
   test("dfToCaseClassForRulesFunctionalProcessing") {
     val df = makeRuleDf(spark, 1)
     import spark.implicits._
+
     val results = df.as[Rule].collect().sortBy(r => (r.scenario, r.ruleOrder)).groupBy(r => r.scenario).map( group =>
       {
+        implicit val logCollector = ListBuffer[String]()
         val scenario = group._1
         val rules = group._2
-        println(s"scenario: $scenario")
-        rules.map(r => println(s"\t ${r.ruleOrder} -> ${r.ruleText}"))
+        loggingWithThreadIdAndCollection(s"scenario: $scenario")
+        rules.map(r => loggingWithThreadIdAndCollection(s"\t ${r.ruleOrder} -> ${r.ruleText}"))
+        val booleanResult = System.nanoTime() % 2 == 0
+        (scenario, booleanResult, logCollector)
       }
+    )
+
+    results.foreach(result => {
+      println(s"scenario: ${result._1}, status: ${result._2}")
+      printLog(result._3)
+    }
     )
   }
 
