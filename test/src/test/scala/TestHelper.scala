@@ -4,12 +4,11 @@ import com.typesafe.config.ConfigFactory
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.types.{BooleanType, IntegerType, LongType, StringType, StructField, StructType}
-import sun.awt.image.ImagingLib
 
 import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
+case class Data(id: Int, dept_name: String, dept_id: Int)
 
 class TestHelper extends  AnyFunSuite {
 
@@ -261,4 +260,27 @@ class TestHelper extends  AnyFunSuite {
       }
     }))
   }
+
+  test("dfToCaseClassFunctionalProcessing") {
+    val df = makeLargeDf(spark, 3)
+    import spark.implicits._
+    df.as[Data].collect().foreach(x => {
+      println(x)
+    })
+
+    val r = df.as[Data].collect().groupBy(_.dept_id).map( group =>
+    {
+      val id = group._1
+      val data = group._2.sortBy(s => s.dept_id)
+      println(id, data.length)
+      data.foreach(d => println(d.id, d.dept_id))
+      val messages = List("A", "B", "C")
+      messages
+    })
+
+    r.foreach(m => m.map(println))
+
+  }
+
+
 }
