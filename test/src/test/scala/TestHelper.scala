@@ -5,7 +5,6 @@ import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
 
-import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
@@ -28,7 +27,7 @@ class TestHelper extends  AnyFunSuite {
   }
 
   def printLog(log: ListBuffer[String]) : Unit = {
-    log.map(l => println(l))
+    log.foreach(l => println(l))
   }
 
 
@@ -81,12 +80,11 @@ class TestHelper extends  AnyFunSuite {
     b.map(x => list).flatMap(y => y).toList
   }
 
-  test("BigTest") {
+  ignore("AlwaysPass") {
     assert(1==1)
   }
 
-  test("SparkHelperTest") {
-    val spark = Helper.getSparkSession("local", "test")
+  ignore("SparkHelperTest") {
     import spark.implicits._
     val seqFoo = Seq[Foo](Foo("Foo"),Foo("Bar") )
     //val df = seqFoo.toDF("col")
@@ -99,7 +97,7 @@ class TestHelper extends  AnyFunSuite {
     assert(df3.count() == seqFoo.length)
   }
 
-  test("postGreJdbc") {
+  ignore("postGreJdbc") {
     val url = Helper.getPostGreUrl("postgres","postgres", "foobar_secret")
     val conn = Helper.getJdbc("postgres", "postgres","foobar_secret")
     val rs = Helper.select(conn, "select * from foo")
@@ -107,14 +105,14 @@ class TestHelper extends  AnyFunSuite {
     assert(rs.getRow() > 0)
   }
 
-    test("postGreJdbcFromConfig") {
+  ignore("postGreJdbcFromConfig") {
     val conn = Helper.getJdbcFromConfig()
     val rs = Helper.select(conn, "select * from foo")
     rs.last()
     assert(rs.getRow() > 0)
   }
 
-  test("config") {
+  ignore("config") {
     import com.typesafe.config._
     val config = ConfigFactory.load()
     val driver = config.getString("jdbc.driver")
@@ -128,8 +126,8 @@ class TestHelper extends  AnyFunSuite {
     println(s"password = $password")
   }
 
-  test("largeDfWriteToDB") {
-    val n = math.pow(2, 20).toInt
+  ignore("largeDfWriteToDB") {
+    val n = math.pow(2, 10).toInt
     val df = makeLargeDf(spark, n)
     val config = ConfigFactory.load()
     val driver = config.getString("jdbc.driver")
@@ -152,7 +150,7 @@ class TestHelper extends  AnyFunSuite {
     val df = makeLargeDf(spark, n)
     assert(df.count() == 6 * n)
 
-    val rule_scale = math.pow(2, 8).toInt
+    val rule_scale = math.pow(2, 5).toInt
     val rules = replicateList(modificationList(), rule_scale)
     import org.apache.spark.sql.functions._
 
@@ -235,7 +233,7 @@ class TestHelper extends  AnyFunSuite {
     assert(list == List(1,2,3,1,2,3,1,2,3))
   }
 
-  test("parallelLogging") {
+  ignore("parallelLogging") {
 
     def timer[R](block: => R): R = {
       val t0 = System.nanoTime()
@@ -326,35 +324,42 @@ class TestHelper extends  AnyFunSuite {
     val df = makeRuleDf(spark, 1)
     import spark.implicits._
 
-//    val scenario_groups = df.as[Rule].collect().groupBy(r => r.scenario).par
-//    scenario_groups.foreach(s => {
-//      val scenario = s._1
-//      val rule_groups = s._2.sortWith( (r1,r2) => sortRuleWith(r1, r2)).groupBy(r =>r.ruleType)
-//      rule_groups.foreach(rg => {
-//        val ruleType = rg._1
-//        val rules = rg._2
-//        rules.map(r => {
-//          println(s"[${Thread.currentThread().getId}] : ${scenario}  $ruleType ${r.ruleOrder}")
-//        })
-//      })
-//    })
+    val scenario_groups = df.as[Rule].collect().groupBy(r => r.scenario).par
+    val results1 = scenario_groups.map(s => {
+      implicit val logCollector = ListBuffer[String]()
+      val scenario = s._1
+      val rule_groups = s._2.sortWith( (r1,r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(r.ruleType).id)
+      rule_groups.keys.toList.sorted.foreach(k => {
+        loggingWithThreadIdAndCollection(s"--> Processing ${RuleTypeEnumeration(k)}")
+        rule_groups(k).sortBy(_.ruleOrder).map(r => {
+          loggingWithThreadIdAndCollection(s"${scenario}  ${r.ruleType} ${r.ruleOrder}")
+        })
+      })
+      val booleanResult = System.nanoTime() % 2 == 0
+      (scenario, booleanResult, logCollector)
+    })
+
+    // note par.map returns a par iterable,so convert to seq
+    results1.seq.foreach(result => {
+      println(s"scenario: ${result._1}, status: ${result._2}")
+      printLog(result._3)
+    }
+    )
 
 
-    val results = df.as[Rule].collect().sortBy(r => (r.scenario, r.ruleOrder)).groupBy(r => r.scenario).par.map( group =>
+    val results2 = df.as[Rule].collect().sortBy(r => (r.scenario, r.ruleOrder)).groupBy(r => r.scenario).par.map( group =>
       {
-        println(s"${Thread.currentThread().getId}-->")
         implicit val logCollector = ListBuffer[String]()
         val scenario = group._1
         val rules = group._2
         loggingWithThreadIdAndCollection(s"scenario: $scenario")
         rules.map(r => loggingWithThreadIdAndCollection(s"\t ${r.ruleOrder} -> ${r.ruleText}"))
         val booleanResult = System.nanoTime() % 2 == 0
-        println(s"<--${Thread.currentThread().getId}")
         (scenario, booleanResult, logCollector)
       }
     )
-
-    results.foreach(result => {
+    // note par.map returns a par iterable,so convert to seq
+    results2.seq.foreach(result => {
       println(s"scenario: ${result._1}, status: ${result._2}")
       printLog(result._3)
     }
@@ -375,10 +380,9 @@ class TestHelper extends  AnyFunSuite {
     val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(r.ruleType).id)
     rules_group.keys.toList.sorted.foreach(k =>
     {
-      println(s"**$k")
+      println(s"**$k -> $RuleTypeEnumeration(k)")
       rules_group(k).sortBy(r=>r.ruleOrder).foreach(println)
     })
-    rules_group.foreach(println)
   }
 
 
