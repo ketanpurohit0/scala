@@ -9,7 +9,7 @@ import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
 case class Data(id: Int, dept_name: String, dept_id: Int)
-case class Rule(scenario: String, ruleOrder: Int, ruleText: String)
+case class Rule(scenario: String, ruleOrder: Int, ruleType: String, ruleText: String)
 
 class TestHelper extends  AnyFunSuite {
 
@@ -33,9 +33,41 @@ class TestHelper extends  AnyFunSuite {
     df
   }
 
+  def sortRuleWithString(left: String, right: String): Boolean = {
+      object RuleTypeEnumeration extends Enumeration {
+          type RuleTypeEnumeration = Value
+          val first = Value(0, "D")
+          val second = Value(1, "DU")
+          val third = Value(2, "I")
+          val fourth = Value(3, "S")
+      }
+
+    RuleTypeEnumeration.withName(left).id <= RuleTypeEnumeration.withName(right).id
+  }
+
+  def sortRuleWith(left: Rule, right: Rule): Boolean = {
+    object RuleTypeEnumeration extends Enumeration {
+      type RuleTypeEnumeration = Value
+      val first = Value(0, "D")
+      val second = Value(1, "DU")
+      val third = Value(2, "I")
+      val fourth = Value(3, "S")
+    }
+
+    RuleTypeEnumeration.withName(left.ruleType).id <= RuleTypeEnumeration.withName(right.ruleType).id
+  }
+
   def makeRuleDf(spark: SparkSession, n: Int) : DataFrame = {
-    val ruleColumns = List("Scenario", "RuleOrder", "RuleText")
-    val rules : List[(String, Int, String)] = List(("Adj#1",1, "SomeRuleDefn1"), ("Adj#2",1,"SomeRuleInAdj#2"), ("Adj#2",2,"SomeOtherRuleInAdj#2"))
+    // rule_types is "S" = set, "I" = insert, "D" = "delete", "DU" = "duplicate"
+    val ruleColumns = List("Scenario", "RuleOrder", "RuleType", "RuleText")
+    val rules : List[(String, Int, String, String)] = List(
+      ("Adj#1",1,"S", "S.SomeRuleDefn1"),
+      ("Adj#2",2,"S","S.SomeRuleInAdj#2"),
+      ("Adj#2",3,"I","insert.SomeRuleInAdj#2"),
+      ("Adj#2",4,"S", "S.SomeOtherRuleInAdj#2"),
+      ("Adj#2",5,"D", "D.SomeOtherRuleInAdj#2"),
+      ("Adj#2",6,"DU", "S.SomeOtherRuleInAdj#2")
+    )
     import spark.implicits._
     val rdd = spark.sparkContext.parallelize(replicateList(rules, n))
     val df = rdd.toDF(ruleColumns:_*)
@@ -301,6 +333,20 @@ class TestHelper extends  AnyFunSuite {
   test("dfToCaseClassForRulesFunctionalProcessing") {
     val df = makeRuleDf(spark, 1)
     import spark.implicits._
+
+//    val scenario_groups = df.as[Rule].collect().groupBy(r => r.scenario).par
+//    scenario_groups.foreach(s => {
+//      val scenario = s._1
+//      val rule_groups = s._2.sortWith( (r1,r2) => sortRuleWith(r1, r2)).groupBy(r =>r.ruleType)
+//      rule_groups.foreach(rg => {
+//        val ruleType = rg._1
+//        val rules = rg._2
+//        rules.map(r => {
+//          println(s"[${Thread.currentThread().getId}] : ${scenario}  $ruleType ${r.ruleOrder}")
+//        })
+//      })
+//    })
+
 
     val results = df.as[Rule].collect().sortBy(r => (r.scenario, r.ruleOrder)).groupBy(r => r.scenario).par.map( group =>
       {
