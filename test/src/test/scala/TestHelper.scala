@@ -5,11 +5,19 @@ import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
 case class Data(id: Int, dept_name: String, dept_id: Int)
 case class Rule(scenario: String, ruleOrder: Int, ruleType: String, ruleText: String)
+object RuleTypeEnumeration extends Enumeration {
+  type RuleTypeEnumeration = Value
+  val first = Value(0, "D")
+  val second = Value(1, "DU")
+  val third = Value(2, "I")
+  val fourth = Value(3, "S")
+}
 
 class TestHelper extends  AnyFunSuite {
 
@@ -34,28 +42,11 @@ class TestHelper extends  AnyFunSuite {
   }
 
   def sortRuleWithString(left: String, right: String): Boolean = {
-      object RuleTypeEnumeration extends Enumeration {
-          type RuleTypeEnumeration = Value
-          val first = Value(0, "D")
-          val second = Value(1, "DU")
-          val third = Value(2, "I")
-          val fourth = Value(3, "S")
-      }
-
     RuleTypeEnumeration.withName(left).id <= RuleTypeEnumeration.withName(right).id
   }
 
   def sortRuleWith(left: Rule, right: Rule): Boolean = {
-    object RuleTypeEnumeration extends Enumeration {
-      type RuleTypeEnumeration = Value
-      val first = Value(0, "D")
-      val second = Value(1, "DU")
-      val third = Value(2, "I")
-      val fourth = Value(3, "S")
-    }
-
     RuleTypeEnumeration.withName(left.ruleType).id <= RuleTypeEnumeration.withName(right.ruleType).id
-
   }
 
   def makeRuleDf(spark: SparkSession, n: Int) : DataFrame = {
@@ -381,9 +372,13 @@ class TestHelper extends  AnyFunSuite {
       Rule("ABC", 7, "DU", "t"),
 
     )
-
-    val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => r.ruleType)
-    rules_group.map(println)
+    val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(r.ruleType).id)
+    rules_group.keys.toList.sorted.foreach(k =>
+    {
+      println(s"**$k")
+      rules_group(k).sortBy(r=>r.ruleOrder).foreach(println)
+    })
+    rules_group.foreach(println)
   }
 
 
