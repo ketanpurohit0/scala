@@ -55,6 +55,7 @@ class TestHelper extends  AnyFunSuite {
     }
 
     RuleTypeEnumeration.withName(left.ruleType).id <= RuleTypeEnumeration.withName(right.ruleType).id
+
   }
 
   def makeRuleDf(spark: SparkSession, n: Int) : DataFrame = {
@@ -367,6 +368,22 @@ class TestHelper extends  AnyFunSuite {
       printLog(result._3)
     }
     )
+  }
+
+  test("BespokeRuleOrdering") {
+    val rules = List[Rule](
+      Rule("ABC", 1, "S", "t"),
+      Rule("ABC", 2, "S", "t"),
+      Rule("ABC", 3, "I", "t"),
+      Rule("ABC", 4, "S", "t"),
+      Rule("ABC", 5, "D", "t"),
+      Rule("ABC", 6, "DU", "t"),
+      Rule("ABC", 7, "DU", "t"),
+
+    )
+
+    val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => r.ruleType)
+    rules_group.map(println)
   }
 
 
