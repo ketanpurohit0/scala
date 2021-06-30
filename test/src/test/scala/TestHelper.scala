@@ -9,6 +9,7 @@ import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
 case class Data(id: Int, dept_name: String, dept_id: Int)
+case class Rule(scenario: String, ruleOrder: Int, ruleText: String)
 
 class TestHelper extends  AnyFunSuite {
 
@@ -20,6 +21,15 @@ class TestHelper extends  AnyFunSuite {
     import spark.implicits._
     val rdd = spark.sparkContext.parallelize(replicateList(data,n))
     val df = rdd.toDF(deptColumns:_*)
+    df
+  }
+
+  def makeRuleDf(spark: SparkSession, n: Int) : DataFrame = {
+    val ruleColumns = List("Scenario", "RuleOrder", "RuleText")
+    val rules : List[(String, Int, String)] = List(("Adj#1",1, "SomeRuleDefn1"), ("Adj#2",1,"SomeRuleInAdj#2"), ("Adj#2",2,"SomeOtherRuleInAdj#2"))
+    import spark.implicits._
+    val rdd = spark.sparkContext.parallelize(replicateList(rules, n))
+    val df = rdd.toDF(ruleColumns:_*)
     df
   }
 
@@ -41,7 +51,7 @@ class TestHelper extends  AnyFunSuite {
   test("BigTest") {
     assert(1==1)
   }
-  
+
   test("SparkHelperTest") {
     val spark = Helper.getSparkSession("local", "test")
     import spark.implicits._
@@ -280,6 +290,19 @@ class TestHelper extends  AnyFunSuite {
 
     r.foreach(m => m.map(println))
 
+  }
+
+  test("dfToCaseClassForRulesFunctionalProcessing") {
+    val df = makeRuleDf(spark, 1)
+    import spark.implicits._
+    val results = df.as[Rule].collect().sortBy(r => (r.scenario, r.ruleOrder)).groupBy(r => r.scenario).map( group =>
+      {
+        val scenario = group._1
+        val rules = group._2
+        println(s"scenario: $scenario")
+        rules.map(r => println(s"\t ${r.ruleOrder} -> ${r.ruleText}"))
+      }
+    )
   }
 
 
