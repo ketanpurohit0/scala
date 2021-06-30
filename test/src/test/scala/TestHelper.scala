@@ -302,14 +302,16 @@ class TestHelper extends  AnyFunSuite {
     val df = makeRuleDf(spark, 1)
     import spark.implicits._
 
-    val results = df.as[Rule].collect().sortBy(r => (r.scenario, r.ruleOrder)).groupBy(r => r.scenario).map( group =>
+    val results = df.as[Rule].collect().sortBy(r => (r.scenario, r.ruleOrder)).groupBy(r => r.scenario).par.map( group =>
       {
+        println(s"${Thread.currentThread().getId}-->")
         implicit val logCollector = ListBuffer[String]()
         val scenario = group._1
         val rules = group._2
         loggingWithThreadIdAndCollection(s"scenario: $scenario")
         rules.map(r => loggingWithThreadIdAndCollection(s"\t ${r.ruleOrder} -> ${r.ruleText}"))
         val booleanResult = System.nanoTime() % 2 == 0
+        println(s"<--${Thread.currentThread().getId}")
         (scenario, booleanResult, logCollector)
       }
     )
