@@ -49,7 +49,7 @@ class TestHelper extends  AnyFunSuite {
     prop.put("user", username)
     prop.put("password", password)
 
-    spark.read.jdbc(url, "TARGET_FOR_SPARK_DF", "ID", 1, 100, n, prop)
+    spark.read.jdbc(url, "TARGET_FOR_SPARK_DF", "ID", 1, 6, n, prop)
   }
 
 
