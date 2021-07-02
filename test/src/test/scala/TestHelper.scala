@@ -5,6 +5,7 @@ import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
 
+import java.util.Properties
 import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
@@ -28,6 +29,13 @@ class TestHelper extends  AnyFunSuite {
 
   def printLog(log: ListBuffer[String]) : Unit = {
     log.foreach(l => println(l))
+  }
+
+  def timer[R](block: => R) :(R, Long) = {
+    val s = System.nanoTime()
+    val r = block
+    val e = System.nanoTime()
+    (r, (e-s)/1000000000)
   }
 
 
@@ -126,8 +134,8 @@ class TestHelper extends  AnyFunSuite {
     println(s"password = $password")
   }
 
-  ignore("largeDfWriteToDB") {
-    val n = math.pow(2, 10).toInt
+  test("largeDfWriteToDB") {
+    val n = math.pow(2, 20).toInt
     val df = makeLargeDf(spark, n)
     val config = ConfigFactory.load()
     val driver = config.getString("jdbc.driver")
@@ -142,6 +150,47 @@ class TestHelper extends  AnyFunSuite {
       .option("user", username)
       .option("password", password)
       .save()
+  }
+
+  test("readLargeDf") {
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    val df = spark.read
+      .format("jdbc")
+      .option("url", url)
+      .option("dbtable", "TARGET_FOR_SPARK_DF")
+      .option("user", username)
+      .option("password", password)
+      .option("numPartitions", 12) // has no affect
+      .load()
+
+    val (a, b) = timer(
+      println("Rows: ", df.count(), df.rdd.getNumPartitions)
+    )
+    println("Time:", b)
+
+  }
+
+  test("readLargeDfAndPartition") {
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    val prop = new Properties()
+    prop.put("user", username)
+    prop.put("password", password)
+
+    val df  = spark.read.jdbc(url, "TARGET_FOR_SPARK_DF", "ID", 1, 100, 3, prop)
+    val (a,b) = timer(
+      println("Rows: ", df.count(), df.rdd.getNumPartitions)
+    )
+    println("Time:", b)
   }
 
   test("largeDfAdjustment") {
