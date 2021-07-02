@@ -284,14 +284,6 @@ class TestHelper extends  AnyFunSuite {
 
   ignore("parallelLogging") {
 
-    def timer[R](block: => R): R = {
-      val t0 = System.nanoTime()
-      val result = block    // call-by-name
-      val t1 = System.nanoTime()
-      println("Elapsed time: " + (t1 - t0) + "ns")
-      result
-    }
-
     def loggingWithPrintln(s:String) : Unit = {
       println(s)
     }
@@ -413,6 +405,15 @@ class TestHelper extends  AnyFunSuite {
       printLog(result._3)
     }
     )
+  }
+
+  test("collectPerf") {
+    val arrayOf100s = Array.fill[Int](100)(100)
+    arrayOf100s.foreach ( s => {
+      import spark.implicits._
+      val df = makeLargeDf(spark, s)
+      assert (df.as[Data].collect().length == df.count())
+    })
   }
 
   test("BespokeRuleOrdering") {
