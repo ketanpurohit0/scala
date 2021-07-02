@@ -38,6 +38,20 @@ class TestHelper extends  AnyFunSuite {
     (r, (e-s)/1000000000)
   }
 
+  def readLargeDfAndPartition(n: Int): DataFrame = {
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    val prop = new Properties()
+    prop.put("user", username)
+    prop.put("password", password)
+
+    spark.read.jdbc(url, "TARGET_FOR_SPARK_DF", "ID", 1, 100, n, prop)
+  }
+
 
   def makeLargeDf(spark: SparkSession, n: Int) : DataFrame = {
     val data : List[(Int, String, Int)] = List[(Int, String, Int)]((1, "Finance", 10), (2, "Marketing", 20), (3, "Sales", 30), (4, "IT", 40), (5, "CTS", 41), (6, "CTS", 42))
@@ -176,17 +190,7 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("readLargeDfAndPartition") {
-    val config = ConfigFactory.load()
-    val driver = config.getString("jdbc.driver")
-    val url = config.getString("jdbc.url")
-    val username = config.getString("jdbc.username")
-    val password = config.getString("jdbc.password")
-
-    val prop = new Properties()
-    prop.put("user", username)
-    prop.put("password", password)
-
-    val df  = spark.read.jdbc(url, "TARGET_FOR_SPARK_DF", "ID", 1, 100, 3, prop)
+    val df  = readLargeDfAndPartition(3)
     val (a,b) = timer(
       println("Rows: ", df.count(), df.rdd.getNumPartitions)
     )
@@ -236,45 +240,50 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("largeDfAdjustmentFunctional") {
-    val n = math.pow(2, 8).toInt
+    val n = math.pow(2, 20).toInt
     spark.sparkContext.setCheckpointDir("checkpointing_folder")
     val df = makeLargeDf(spark, n)
     assert(df.count() == 6 * n)
 
-    val rule_scale = math.pow(2, 8).toInt
+    val rule_scale = math.pow(2, 2).toInt
     val rules = replicateList(modificationList(), rule_scale)
     import org.apache.spark.sql.functions._
 
-    val flag_col = "isModified"
-    val partition_cols = List[Column](col("dept_name"), col("dept_id"))
-    val check_point_interval = 5
+    val (rows_affected, t) = timer {
+      val flag_col = "isModified"
+      val partition_cols = List[Column](col("dept_name"), col("dept_id"))
+      val check_point_interval = 5
 
-    var check_point_stale: Boolean = true
+      var check_point_stale: Boolean = true
 
-    val df_result = rules.zipWithIndex.foldLeft[DataFrame](df.withColumn(flag_col, lit(false)).repartition(8, partition_cols:_*).cache())((df_base, r) => {
-      val index = r._2
-      val mod = r._1
-      if (index % check_point_interval == 0) {
-        check_point_stale = false
-        df_base.withColumn(flag_col, when(expr(mod._3), lit(true)).otherwise(col(flag_col)))
-          .withColumn(mod._1, when(expr(mod._3), lit(mod._2)).otherwise(col(mod._1))).checkpoint(true)
-      }
-      else {
-        check_point_stale = true
-        df_base.withColumn(flag_col, when(expr(mod._3), lit(true)).otherwise(col(flag_col)))
-          .withColumn(mod._1, when(expr(mod._3), lit(mod._2)).otherwise(col(mod._1)))
-      }
-    })
+      val df_result = rules.zipWithIndex.foldLeft[DataFrame](df.withColumn(flag_col, lit(false)).repartition(8, partition_cols: _*).cache())((df_base, r) => {
+        val index = r._2
+        val mod = r._1
+        if (index % check_point_interval == 0) {
+          check_point_stale = false
+          df_base.withColumn(flag_col, when(expr(mod._3), lit(true)).otherwise(col(flag_col)))
+            .withColumn(mod._1, when(expr(mod._3), lit(mod._2)).otherwise(col(mod._1))).checkpoint(true)
+        }
+        else {
+          check_point_stale = true
+          df_base.withColumn(flag_col, when(expr(mod._3), lit(true)).otherwise(col(flag_col)))
+            .withColumn(mod._1, when(expr(mod._3), lit(mod._2)).otherwise(col(mod._1)))
+        }
+      })
 
 
-    val df_final =
-      if (check_point_stale)
-        df_result.filter(s"$flag_col = true").drop(flag_col).checkpoint(true)
-      else
-        df_result.filter(s"$flag_col = true").drop(flag_col)
+      val df_final =
+        if (check_point_stale)
+          df_result.filter(s"$flag_col = true").drop(flag_col).checkpoint(true)
+        else
+          df_result.filter(s"$flag_col = true").drop(flag_col)
 
-    val rows_affected = df_final.count()
-    println(s"Rows affected: $rows_affected")
+      val rows_affected = df_final.count()
+
+      rows_affected
+    }
+
+    println(s"Time: $t sec. Rows affected: $rows_affected")
   }
 
   test("replicateList") {
