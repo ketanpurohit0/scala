@@ -166,6 +166,25 @@ class TestHelper extends  AnyFunSuite {
       .save()
   }
 
+  test("readLargeDfFromDBandWriteToDB") {
+    val df = readLargeDfAndPartition(6)
+
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    df.write.mode("append")
+      .format("jdbc")
+      .option("url", url)
+      .option("dbtable", "OTHER_TARGET_FOR_SPARK_DF")
+      .option("user", username)
+      .option("password", password)
+      .option("batchsize", 1000000)
+      .save()
+  }
+
   test("readLargeDf") {
     val config = ConfigFactory.load()
     val driver = config.getString("jdbc.driver")
