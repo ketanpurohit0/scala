@@ -1,5 +1,6 @@
 package com.kkp.Unt
 
+//import com.kkp.Unt.Helper
 import com.typesafe.config.ConfigFactory
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
@@ -102,6 +103,15 @@ class TestHelper extends  AnyFunSuite {
     b.map(x => list).flatMap(y => y).toList
   }
 
+  def cacheToParquet(df: DataFrame, relative_location: String): DataFrame = {
+    df.write.mode("overwrite").parquet(s"./${relative_location}")
+    df.count()
+    val df2 = spark.read.parquet(s"./${relative_location}")
+    val r = df2.inputFiles.forall(f => f.contains(relative_location))
+    assert(r == true)
+    df2
+  }
+
   ignore("AlwaysPass") {
     assert(1==1)
   }
@@ -146,6 +156,14 @@ class TestHelper extends  AnyFunSuite {
     println(s"url =      $url")
     println(s"username = $username")
     println(s"password = $password")
+  }
+
+  test("largeDfWriteToParquet") {
+    val df = makeLargeDf(spark, 3)
+    df.write.mode("overwrite").parquet("./foobar_largeDfWriteToParquet")
+    val df2 = spark.read.parquet("./foobar_largeDfWriteToParquet")
+    val r = df2.inputFiles.forall(f => f.contains("foobar_largeDfWriteToParquet"))
+    assert(r == true)
   }
 
   test("largeDfWriteToDB") {
@@ -452,7 +470,7 @@ class TestHelper extends  AnyFunSuite {
       Rule("ABC", 4, "S", "t"),
       Rule("ABC", 5, "D", "t"),
       Rule("ABC", 6, "DU", "t"),
-      Rule("ABC", 7, "DU", "t"),
+      Rule("ABC", 7, "DU", "t")
 
     )
     val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(r.ruleType).id)
