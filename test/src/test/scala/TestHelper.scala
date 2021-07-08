@@ -277,12 +277,12 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("largeDfAdjustmentFunctional") {
-    val n = math.pow(2, 20).toInt
+    val n = math.pow(2, 8).toInt
     spark.sparkContext.setCheckpointDir("checkpointing_folder")
     val df = makeLargeDf(spark, n)
     assert(df.count() == 6 * n)
 
-    val rule_scale = math.pow(2, 2).toInt
+    val rule_scale = math.pow(2, 5).toInt
     val rules = replicateList(modificationList(), rule_scale)
     import org.apache.spark.sql.functions._
 
