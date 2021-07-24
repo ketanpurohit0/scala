@@ -103,11 +103,11 @@ class TestHelper extends  AnyFunSuite {
     b.map(x => list).flatMap(y => y).toList
   }
 
-  def cacheToParquet(df: DataFrame, relative_location: String): DataFrame = {
-    df.write.mode("overwrite").parquet(s"./${relative_location}")
+  def cacheToParquet(df: DataFrame, path: String): DataFrame = {
+    df.write.mode("overwrite").parquet(path)
     df.count()
-    val df2 = spark.read.parquet(s"./${relative_location}")
-    val r = df2.inputFiles.forall(f => f.contains(relative_location))
+    val df2 = spark.read.parquet(path)
+    val r = df2.inputFiles.forall(f => f.contains(path))
     assert(r == true)
     df2
   }
@@ -193,14 +193,19 @@ class TestHelper extends  AnyFunSuite {
     val username = config.getString("jdbc.username")
     val password = config.getString("jdbc.password")
 
-    df.write.mode("append")
-      .format("jdbc")
-      .option("url", url)
-      .option("dbtable", "OTHER_TARGET_FOR_SPARK_DF")
-      .option("user", username)
-      .option("password", password)
-      .option("batchsize", 1000000)
-      .save()
+    (10 to 40 by 10).foreach(v => {
+      val (_, e) = timer {
+        df.write.mode("append")
+          .format("jdbc")
+          .option("url", url)
+          .option("dbtable", "OTHER_TARGET_FOR_SPARK_DF")
+          .option("user", username)
+          .option("password", password)
+          .option("batchsize", v * 100000)
+          .save()
+      }
+      println(v, e)
+    })
   }
 
   test("readLargeDf") {
@@ -479,6 +484,21 @@ class TestHelper extends  AnyFunSuite {
       println(s"**$k -> $RuleTypeEnumeration(k)")
       rules_group(k).sortBy(r=>r.ruleOrder).foreach(println)
     })
+  }
+
+  test("parquetWriteTest") {
+    val df = makeRuleDf(spark, 1)
+    val parquetPath = "file:///parquet_files/test"
+    cacheToParquet(df, parquetPath )
+  }
+
+  test("hadoopFs") {
+    import org.apache.hadoop.fs._
+    val File = FileSystem.get(spark.sparkContext.hadoopConfiguration)
+    val parquetPath = "file:///parquet_files/test"
+    assert (File.exists(new Path(parquetPath)))
+    File.delete(new Path(parquetPath), true)
+    assert (! File.exists(new Path(parquetPath)))
   }
 
 
