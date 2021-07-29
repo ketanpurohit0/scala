@@ -479,23 +479,23 @@ class TestHelper extends  AnyFunSuite {
     // want to treat the same for ordering purposes
     val rules = List[Rule](
       Rule("ABC", "t1", 1, "R_anyread_1", "t"),
-      Rule("ABC", "t1", 2, "S", "t"),
       Rule("ABC", "t1", 3, "S", "t"),
-      Rule("ABC", "t1", 4, "I", "t"),
       Rule("ABC", "t1", 5, "S", "t"),
-      Rule("ABC", "t1", 6, "D", "t"),
-      Rule("ABC", "t1", 7, "R_anyread_2", "t"),
-      Rule("ABC", "t1", 8, "DU", "t"),
-      Rule("ABC", "t1", 9, "DU", "t"),
+      Rule("ABC", "t1", 7, "I", "t"),
+      Rule("ABC", "t1", 9, "S", "t"),
+      Rule("ABC", "t1", 11, "D", "t"),
+      Rule("ABC", "t1", 13, "R_anyread_2", "t"),
+      Rule("ABC", "t1", 15, "DU", "t"),
+      Rule("ABC", "t1", 17, "DU", "t"),
 
-      Rule("ABC", "t2", 10, "R_anyread_1", "t"),
-      Rule("ABC", "t2", 11, "S", "t"),
-      Rule("ABC", "t2", 12, "S", "t"),
-      Rule("ABC", "t2", 13, "I", "t"),
-      Rule("ABC", "t2", 14, "S", "t"),
-      Rule("ABC", "t2", 15, "D", "t"),
-      Rule("ABC", "t2", 16, "R_anyread_2", "t"),
-      Rule("ABC", "t2", 17, "DU", "t"),
+      Rule("ABC", "t2", 2, "R_anyread_1", "t"),
+      Rule("ABC", "t2", 4, "S", "t"),
+      Rule("ABC", "t2", 6, "S", "t"),
+      Rule("ABC", "t2", 8, "I", "t"),
+      Rule("ABC", "t2", 10, "S", "t"),
+      Rule("ABC", "t2", 12, "D", "t"),
+      Rule("ABC", "t2", 14, "R_anyread_2", "t"),
+      Rule("ABC", "t2", 16, "DU", "t"),
       Rule("ABC", "t2", 18, "DU", "t")
 
     )
