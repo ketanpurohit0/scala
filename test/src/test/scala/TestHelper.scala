@@ -14,15 +14,21 @@ case class Data(id: Int, dept_name: String, dept_id: Int)
 case class Rule(scenario: String, ruleOrder: Int, ruleType: String, ruleText: String)
 object RuleTypeEnumeration extends Enumeration {
   type RuleTypeEnumeration = Value
-  val first = Value(0, "D")
-  val second = Value(1, "DU")
-  val third = Value(2, "I")
-  val fourth = Value(3, "S")
+  val r0 = Value(0, "R_common_read")
+  val first = Value(1, "D")
+  val second = Value(2, "DU")
+  val third = Value(3, "I")
+  val fourth = Value(4, "S")
 }
 
 class TestHelper extends  AnyFunSuite {
 
   val spark = Helper.getSparkSession("local[*]", "test")
+
+  // we treat different reads as a common read type
+  // so for that purpose we map actual value to its common value that does exist in the rule type enumerator
+  implicit val mapOfReads = Map[String,String]("R_anyread_1" -> "R_common_read", "R_anyread_2"-> "R_common_read", "R_anyread_3"->"R_common_read")
+
 
   def loggingWithThreadIdAndCollection(s: Any)(implicit log: ListBuffer[String]): Unit = {
     log += s"[${Thread.currentThread().getId()}],$s"
@@ -67,8 +73,8 @@ class TestHelper extends  AnyFunSuite {
     RuleTypeEnumeration.withName(left).id <= RuleTypeEnumeration.withName(right).id
   }
 
-  def sortRuleWith(left: Rule, right: Rule): Boolean = {
-    RuleTypeEnumeration.withName(left.ruleType).id <= RuleTypeEnumeration.withName(right.ruleType).id
+  def sortRuleWith(left: Rule, right: Rule)(implicit map: Map[String,String]): Boolean = {
+    RuleTypeEnumeration.withName(map.getOrElse(left.ruleType, left.ruleType)).id <= RuleTypeEnumeration.withName(map.getOrElse(right.ruleType, right.ruleType)).id
   }
 
   def makeRuleDf(spark: SparkSession, n: Int) : DataFrame = {
@@ -468,17 +474,22 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("BespokeRuleOrdering") {
+
+    // R_anyread_1 and R_anyread_2 are different types of reads we
+    // want to treat the same for ordering purposes
     val rules = List[Rule](
-      Rule("ABC", 1, "S", "t"),
+      Rule("ABC", 1, "R_anyread_1", "t"),
       Rule("ABC", 2, "S", "t"),
-      Rule("ABC", 3, "I", "t"),
-      Rule("ABC", 4, "S", "t"),
-      Rule("ABC", 5, "D", "t"),
-      Rule("ABC", 6, "DU", "t"),
-      Rule("ABC", 7, "DU", "t")
+      Rule("ABC", 3, "S", "t"),
+      Rule("ABC", 4, "I", "t"),
+      Rule("ABC", 5, "S", "t"),
+      Rule("ABC", 6, "D", "t"),
+      Rule("ABC", 7, "R_anyread_2", "t"),
+      Rule("ABC", 8, "DU", "t"),
+      Rule("ABC", 9, "DU", "t")
 
     )
-    val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(r.ruleType).id)
+    val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(mapOfReads.getOrElse(r.ruleType, r.ruleType)).id)
     rules_group.keys.toList.sorted.foreach(k =>
     {
       println(s"**$k -> $RuleTypeEnumeration(k)")
