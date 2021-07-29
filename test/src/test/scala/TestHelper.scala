@@ -479,24 +479,24 @@ class TestHelper extends  AnyFunSuite {
     // want to treat the same for ordering purposes
     val rules = List[Rule](
       Rule("ABC", "t1", 1, "R_anyread_1", "t"),
-//      Rule("ABC", "t1", 3, "S", "t"),
-//      Rule("ABC", "t1", 5, "S", "t"),
-//      Rule("ABC", "t1", 7, "I", "t"),
-//      Rule("ABC", "t1", 9, "S", "t"),
-//      Rule("ABC", "t1", 11, "D", "t"),
+      Rule("ABC", "t1", 3, "S", "t"),
+      Rule("ABC", "t1", 5, "S", "t"),
+      Rule("ABC", "t1", 7, "I", "t"),
+      Rule("ABC", "t1", 9, "S", "t"),
+      Rule("ABC", "t1", 11, "D", "t"),
       Rule("ABC", "t1", 13, "R_anyread_2", "t"),
-//      Rule("ABC", "t1", 15, "DU", "t"),
-//      Rule("ABC", "t1", 17, "DU", "t"),
+      Rule("ABC", "t1", 15, "DU", "t"),
+      Rule("ABC", "t1", 17, "DU", "t"),
 
       Rule("ABC", "t2", 2, "R_anyread_1", "t"),
       Rule("ABC", "t2", 4, "S", "t"),
       Rule("ABC", "t2", 6, "S", "t"),
-//      Rule("ABC", "t2", 8, "I", "t"),
-//      Rule("ABC", "t2", 10, "S", "t"),
-//      Rule("ABC", "t2", 12, "D", "t"),
+      Rule("ABC", "t2", 8, "I", "t"),
+      Rule("ABC", "t2", 10, "S", "t"),
+      Rule("ABC", "t2", 12, "D", "t"),
       Rule("ABC", "t2", 14, "R_anyread_2", "t"),
-//      Rule("ABC", "t2", 16, "DU", "t"),
-//      Rule("ABC", "t2", 18, "DU", "t")
+      Rule("ABC", "t2", 16, "DU", "t"),
+      Rule("ABC", "t2", 18, "DU", "t")
 
     )
 
@@ -526,9 +526,9 @@ class TestHelper extends  AnyFunSuite {
 
     // group rules by id, then by target table and then sort by ruleorder
     val rules_group_by_id = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy( r => RuleTypeEnumeration.withName(mapOfReads.getOrElse(r.ruleType, r.ruleType)).id )
-    rules_group_by_id.foreach(g => {
-      println(s"${g._1}")
-      val rules_group = g._2.groupBy(g => g.targetTable)
+    rules_group_by_id.keys.toArray.sortBy(k => k).foreach(g => {
+      println(s"${g}")
+      val rules_group =rules_group_by_id(g).groupBy(g => g.targetTable)
       rules_group.keys.foreach(k =>{
         println(s"\t**$k -> ${rules_group(k)}")
         rules_group(k).sortBy(r=>r.ruleOrder).foreach(f => println("\t\t", f))
