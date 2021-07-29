@@ -501,23 +501,36 @@ class TestHelper extends  AnyFunSuite {
     )
 
     // group rules by ruleType and order them in ruleOrder within ruleType
-    val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(mapOfReads.getOrElse(r.ruleType, r.ruleType)).id)
-    rules_group.keys.toList.sorted.foreach(k =>
-    {
-      println(s"**$k -> $RuleTypeEnumeration(k)")
-      rules_group(k).sortBy(r=>r.ruleOrder).foreach(f => println("\t", f))
-    })
+//    val rules_group = rules.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(mapOfReads.getOrElse(r.ruleType, r.ruleType)).id)
+//    rules_group.keys.toList.sorted.foreach(k =>
+//    {
+//      println(s"**$k -> $RuleTypeEnumeration(k)")
+//      rules_group(k).sortBy(r=>r.ruleOrder).foreach(f => println("\t", f))
+//    })
+//
+//    println("=================")
+//
+//    // group rules by table and then as above
+//    val rules_group_by_t = rules.groupBy(r => r.targetTable)
+//    rules_group_by_t.foreach(g =>{
+//      println(s"${g._1}")
+//      val rules_group = g._2.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(mapOfReads.getOrElse(r.ruleType, r.ruleType)).id)
+//      rules_group.keys.toList.sorted.foreach(k =>
+//      {
+//        println(s"\t**$k -> $RuleTypeEnumeration(k)")
+//        rules_group(k).sortBy(r=>r.ruleOrder).foreach(f => println("\t\t", f))
+//      })
+//    })
 
-    println("=================")
+    println("================")
 
-    // group rules by table and then as above
-    val rules_group_by_t = rules.groupBy(r => r.targetTable)
-    rules_group_by_t.foreach(g =>{
+    // group rules by id, then by target table and then sort by ruleorder
+    val rules_group_by_id = rules.groupBy( r => RuleTypeEnumeration.withName(mapOfReads.getOrElse(r.ruleType, r.ruleType)).id )
+    rules_group_by_id.foreach(g => {
       println(s"${g._1}")
-      val rules_group = g._2.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(r => RuleTypeEnumeration.withName(mapOfReads.getOrElse(r.ruleType, r.ruleType)).id)
-      rules_group.keys.toList.sorted.foreach(k =>
-      {
-        println(s"\t**$k -> $RuleTypeEnumeration(k)")
+      val rules_group = g._2.sortWith((r1, r2) => sortRuleWith(r1, r2)).groupBy(g => g.targetTable)
+      rules_group.keys.foreach(k =>{
+        println(s"\t**$k -> ${rules_group(k)}")
         rules_group(k).sortBy(r=>r.ruleOrder).foreach(f => println("\t\t", f))
       })
     })
