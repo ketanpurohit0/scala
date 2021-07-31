@@ -577,5 +577,18 @@ class TestHelper extends  AnyFunSuite {
     assert (! File.exists(new Path(parquetPath)))
   }
 
+  test("matchTuples") {
+    val testTuples = Seq[(Boolean, String)]((true, "A"),(false,"B"),(true, "SET"), (false, "SET"))
+
+    testTuples.foreach(tt => {
+      tt match {
+        case (_, "A") => println("A"); assert("A" == tt._2)
+        case (_, "B") => println("B"); assert("B" == tt._2)
+        case (true, "SET") => println("fast-SET"); assert(true == tt._1)
+        case (false, "SET") => println("slow-SET"); assert(false == tt._1)
+      }
+    })
+  }
+
 
 }
