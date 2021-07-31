@@ -2,7 +2,8 @@ package com.kkp.Unt
 
 //import com.kkp.Unt.Helper
 import com.typesafe.config.ConfigFactory
-import org.apache.spark.sql.{Column, DataFrame, SparkSession}
+import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.{Column, DataFrame, Encoders, SparkSession}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
 
@@ -415,6 +416,31 @@ class TestHelper extends  AnyFunSuite {
     })
 
     r.foreach(m => m.map(println))
+
+  }
+
+
+  test("convertDfToCaseClassAndConvertBacktoRow") {
+    val df = makeLargeDf(spark, 1)
+    //println("#count",df.count())
+    import spark.implicits._
+
+    val schema = Encoders.product[Data].schema
+
+    val (_,e) = timer(
+    df.as[Data].collect().foreach(x => {
+      val values = x.productIterator.toSeq.toArray
+      val row = new GenericRowWithSchema(values, schema)
+      //println(x, row, row.getAs[Int]("id"), row.getAs[String]("dept_name"), row.getInt(0))
+    }))
+    println(s"with_convert_back: $e")
+
+    val (_,e1) = timer(
+      df.as[Data].collect().foreach(x => {
+        //println(x, row, row.getAs[Int]("id"), row.getAs[String]("dept_name"), row.getInt(0))
+      }))
+    println(s"wo_convert_back: $e1")
+
 
   }
 
