@@ -77,11 +77,18 @@ object Helper {
 
   }
 
-  def nullSafeJoin(left : DataFrame, right: DataFrame, colNames: Seq[String], joinType:String = "inner"): DataFrame = {
+  def nullSafeJoin(left : DataFrame, right: DataFrame, colNames: Seq[String], joinType:String = "left"): DataFrame = {
     val joinCondition = colNames.foldLeft(lit(true))( (col, colName) => col && left(colName) <=> right(colName))
     val noNeedToDropCols = Seq("left_semi","left_anti").contains(joinType)
     val tableToDropColFrom = if (Seq("right","right_outer").contains(joinType)) left else right
     colNames.foldLeft(left.join(right, joinCondition, joinType)) ((df, colName) => if (!noNeedToDropCols) df.drop(tableToDropColFrom(colName)) else df)
+  }
+
+  def nullSafeJoin2(left : DataFrame, right: DataFrame, colNamesLeft: Seq[String], colNamesRight: Seq[String], joinType:String = "left"): DataFrame = {
+    val joinCondition = colNamesLeft.zip(colNamesRight).foldLeft(lit(true))( (col, colName) => col && left(colName._1) <=> right(colName._2))
+    val noNeedToDropCols = Seq("left_semi","left_anti").contains(joinType)
+    val tableToDropColFrom = if (Seq("right","right_outer").contains(joinType)) left else right
+    left.join(right, joinCondition, joinType)
   }
 
   def mapper(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String], mapDfValueCols: String*) : DataFrame  = {
