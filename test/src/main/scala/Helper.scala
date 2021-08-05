@@ -85,10 +85,12 @@ object Helper {
   }
 
   def nullSafeJoin2(left : DataFrame, right: DataFrame, colNamesLeft: Seq[String], colNamesRight: Seq[String], joinType:String = "left"): DataFrame = {
-    val joinCondition = colNamesLeft.zip(colNamesRight).foldLeft(lit(true))( (col, colName) => col && left(colName._1) <=> right(colName._2))
+    val colNamesZipped = colNamesLeft.zip(colNamesRight)
+    val joinCondition = colNamesZipped.foldLeft(lit(true))( (col, colName) => col && left(colName._1) <=> right(colName._2))
     val noNeedToDropCols = Seq("left_semi","left_anti").contains(joinType)
     val tableToDropColFrom = if (Seq("right","right_outer").contains(joinType)) left else right
-    left.join(right, joinCondition, joinType)
+    def columnToDrop(c: (String, String)) = if (Seq("right","right_outer").contains(joinType)) c._1 else c._2
+    colNamesZipped.foldLeft(left.join(right, joinCondition, joinType)) ((df, colName) => if (!noNeedToDropCols) df.drop(tableToDropColFrom(columnToDrop(colName))) else df)
   }
 
   def mapper(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String], mapDfValueCols: String*) : DataFrame  = {
