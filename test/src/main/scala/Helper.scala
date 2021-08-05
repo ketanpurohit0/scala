@@ -1,8 +1,10 @@
 package com.kkp.Unt
-import org.apache.spark.{SparkConf,SparkContext}
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, lit}
+import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.sql.{DataFrame, SparkSession}
+
 import java.sql.Connection
-import java.sql.{DriverManager,ResultSet}
+import java.sql.{DriverManager, ResultSet}
 import java.sql.Driver
 object Helper {
 
@@ -56,6 +58,23 @@ object Helper {
   def select(conn : Connection, sql :String) :ResultSet = {
     val stmt = conn.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)
     return stmt.executeQuery(sql)
+  }
+
+  def unionWithDefault(left: DataFrame, right: DataFrame) : DataFrame = {
+    val left_cols = left.columns
+    val right_cols = right.columns
+
+    val common_cols = left_cols.intersect(right_cols).map(col(_))
+    val left_df_orig_cols = left_cols.diff(right_cols).map(left(_))
+    val left_df_new_cols = right_cols.diff(left_cols).map(c => (lit(null).cast(right.schema(c).dataType).as(c)))
+    val left_df_with_newcols = left.select((common_cols ++ left_df_orig_cols ++ left_df_new_cols):_*)
+
+    val right_df_orig_cols = right_cols.diff(left_cols).map(right(_))
+    val right_df_new_cols = left_cols.diff(right_cols).map(c => (lit(null).cast(left.schema(c).dataType).as(c)))
+    val right_df_with_newcols = right.select((common_cols ++ right_df_orig_cols ++ right_df_new_cols):_*)
+
+    left_df_with_newcols.unionByName(right_df_with_newcols)
+
   }
 
 }

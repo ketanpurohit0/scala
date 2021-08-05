@@ -1,6 +1,7 @@
 package com.kkp.Unt
 
 //import com.kkp.Unt.Helper
+import com.kkp.Unt.Helper.unionWithDefault
 import com.typesafe.config.ConfigFactory
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.{Column, DataFrame, Encoders, SparkSession}
@@ -588,6 +589,16 @@ class TestHelper extends  AnyFunSuite {
         case (false, "SET") => println("slow-SET"); assert(false == tt._1)
       }
     })
+  }
+
+  test("unionWithDefaults") {
+    import spark.implicits._
+    val df1 = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("N1", "N2", "N3")
+    val df2 = Seq(("A","B"),("B","C"),("C","D")).toDF("A1","A2")
+    val df3 = Seq(3.14, 2.713, 9.81).toDF("F1")
+
+    val data = Seq(df1, df2, df3).reduce(Helper.unionWithDefault(_,_))
+    data.show(false)
   }
 
 
