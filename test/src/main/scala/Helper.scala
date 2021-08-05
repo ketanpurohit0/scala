@@ -1,7 +1,7 @@
 package com.kkp.Unt
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.sql.{DataFrame, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 
 import java.sql.Connection
 import java.sql.{DriverManager, ResultSet}
@@ -93,7 +93,8 @@ object Helper {
     colNamesZipped.foldLeft(left.join(right, joinCondition, joinType)) ((df, colName) => if (!noNeedToDropCols) df.drop(tableToDropColFrom(columnToDrop(colName))) else df)
   }
 
-  def mapper(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String], mapDfValueCols: String*) : DataFrame  = {
+  def nullSafeMapperJoin(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String],  retainOnlyMapValueCols : Boolean, joinType : String,  mapDfValueCols: String*) : DataFrame = {
+    // Basic checks - comment out once happy
     // make sure the number of keys as of equal length
     assert(inputDfKeyCols.size == mapDfKeyCols.size)
     // make sure every specified key actually exists in relevant df
@@ -103,8 +104,20 @@ object Helper {
     // make sure all target fields exist
     assert(mapDfValueCols.diff(mapDf.columns).size == 0)
 
-    inputDf.join(mapDf)
+    def keepRightCols() : Seq[Column] = {
+      if (retainOnlyMapValueCols) {
+        mapDfValueCols.map(mapDf(_))
+      }
+      else {
+        mapDf.columns.map(col)
+      }
+    }
 
+    val colNamesZipped = inputDfKeyCols.zip(mapDfKeyCols)
+    val joinCondition = colNamesZipped.foldLeft(lit(true))( (col, colName) => col && inputDf(colName._1) <=> mapDf(colName._2))
+    val keepLeftCols = inputDf.columns.map(col(_))
+    val columnsToRetain = (keepLeftCols ++ keepRightCols)
+    inputDf.join(mapDf, joinCondition, joinType).select(columnsToRetain:_*)
   }
 
 }

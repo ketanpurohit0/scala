@@ -619,7 +619,7 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("joinTypes") {
-    val df1 = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("N1", "N2", "N3")
+    val df1 = Seq((1,2,3),(2,3,4),(3,4,5),(4,5,6)).toDF("N1", "N2", "N3")
     val df2 = Seq((1,2,3.1),(2,3,4.1),(3,4,5.1)).toDF("N1", "N2", "N3f")
 
     Seq("inner", "outer", "full", "fullouter", "full_outer", "leftouter", "left", "left_outer", "rightouter", "right", "right_outer", "leftsemi", "left_semi", "leftanti", "left_anti", "cross").foreach(joinType =>{
@@ -634,14 +634,18 @@ class TestHelper extends  AnyFunSuite {
 
   }
 
-  test("mapper") {
-    val inputDf = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("IK1", "IK2", "OTHER")
+  test("nullSafeMapperJoin") {
+    val inputDf = Seq((1,2,3),(2,3,4),(3,4,5),(4,5,6)).toDF("IK1", "IK2", "OTHER")
     val mapDf = Seq((1,2,"1&2"),(2,3,"2&3"),(3,4,"3&4")).toDF("MK1", "MK2", "MAPPED_VALUE")
     val otherMapDf = Seq(("A","a"),("B","b")).toDF("MK1","MAPPED_VALUE")
+    val joinType = "left_outer"
 
-    Helper.mapper(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), "MAPPED_VALUE")
+    println(s"-- $joinType")
+    val r = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE")
+    r.show(false)
 
-
+    val r2 = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), false, joinType, "MAPPED_VALUE")
+    r2.show(false)
   }
 
 
