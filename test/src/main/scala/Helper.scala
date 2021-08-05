@@ -100,7 +100,7 @@ object Helper {
     colNamesZipped.foldLeft(left.join(right, joinCondition, joinType)) ((df, colName) => if (!noNeedToDropCols) df.drop(tableToDropColFrom(columnToDrop(colName))) else df)
   }
 
-  def nullSafeMapperJoin(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String],  retainOnlyMapValueCols : Boolean, joinType : String,  mapDfValueCols: String*) : DataFrame = {
+  def nullSafeLookupJoin(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String], retainOnlyMapValueCols : Boolean, joinType : String, mapDfValueCols: String*) : DataFrame = {
     // Basic checks - comment out once happy
     // make sure the number of keys as of equal length
     assert(inputDfKeyCols.size == mapDfKeyCols.size)

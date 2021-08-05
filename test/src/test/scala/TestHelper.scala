@@ -642,31 +642,41 @@ class TestHelper extends  AnyFunSuite {
 
   }
 
-  test("nullSafeMapperJoin") {
+  test("flatMap") {
+    val l = ('A' to 'Z').map( c => ('A' to 'Z').map(c2 => s"$c$c2"))
+    val l2 = l.flatten
+    val f = l2.map(l => (l, Helper.toColNo(l)))
+    assert(f.size > 0)
+  }
+
+  test("nullSafeLookupJoin") {
     val inputDf = Seq((1,2,3,"A"),(2,3,4,"B"),(3,4,5,"C"),(4,5,6,"D"),(5,6,7,"CX")).toDF("IK1", "IK2", "OTHER","COL_NAME")
     val mapDf = Seq((1,2,"1&2","2&1"),(2,3,"2&3","3&2"),(3,4,"3&4","4&3")).toDF("MK1", "MK2", "MAPPED_VALUE1","MAPPED_VALUE2")
     val anotherMapDf = Seq((2,3,"2&3","3&2"),(3,4,"3&4","4&3"),(4,5,"4&5","5&4")).toDF("MK1", "MK2", "ANOTHER_MAPPED_VALUE1","ANOTHER_MAPPED_VALUE2")
     val asciiMapDf = ('A' to 'Z').map(c => (c.toString, c.toInt - 64)).toDF("COL_NAME", "COL_NO")
     val asciiMap2Df = Seq("AA", "BB","CX").map( s => (s, Helper.toColNo(s))).toDF("COL_NAME", "COL_NO2")
+    val asciiMap3Df =  ('A' to 'Z').map( c => ('A' to 'Z').map(c2 => s"$c$c2")).flatten.map(f => (f, Helper.toColNo(f), s"map $f")).toDF("COL_NAME","COL_NO3","COL_DESC")
     val joinType = "left_outer"
 
     println(s"-- $joinType")
-    val r = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE1")
+    val r = Helper.nullSafeLookupJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE1")
     r.show(false)
 
-    val r2 = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE1", "MAPPED_VALUE2")
+    val r2 = Helper.nullSafeLookupJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE1", "MAPPED_VALUE2")
     r2.show(false)
 
-    val r3 = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, Seq("MAPPED_VALUE1", "MAPPED_VALUE2"):_*)
+    val r3 = Helper.nullSafeLookupJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, Seq("MAPPED_VALUE1", "MAPPED_VALUE2"):_*)
     r3.show(false)
 
     // use different maps
+    // (mapDf, joinkeysLeft, joinKeysRight, valueKeys)
     val df = Seq(
-        (mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"),"MAPPED_VALUE1"),
-        (anotherMapDf, Seq("IK2","OTHER"), Seq("MK1","MK2"),"ANOTHER_MAPPED_VALUE1"),
-        (asciiMapDf, Seq("COL_NAME"), Seq("COL_NAME"), "COL_NO"),
-      (asciiMap2Df, Seq("COL_NAME"),Seq("COL_NAME"), "COL_NO2")
-    ).foldLeft(inputDf) ( (idf, item) => Helper.nullSafeMapperJoin(idf, item._1, item._2, item._3, true, joinType, item._4))
+        (mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"),Seq("MAPPED_VALUE1")),
+        (anotherMapDf, Seq("IK2","OTHER"), Seq("MK1","MK2"),Seq("ANOTHER_MAPPED_VALUE1")),
+        (asciiMapDf, Seq("COL_NAME"), Seq("COL_NAME"), Seq("COL_NO")),
+        (asciiMap2Df, Seq("COL_NAME"),Seq("COL_NAME"), Seq("COL_NO2")),
+        (asciiMap3Df, Seq("COL_NAME"),Seq("COL_NAME"), Seq("COL_NO3","COL_DESC"))
+    ).foldLeft(inputDf) ( (idf, item) => Helper.nullSafeLookupJoin(idf, item._1, item._2, item._3, true, joinType, item._4:_*))
     df.show(false)
   }
 
