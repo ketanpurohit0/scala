@@ -26,6 +26,8 @@ object RuleTypeEnumeration extends Enumeration {
 class TestHelper extends  AnyFunSuite {
 
   val spark = Helper.getSparkSession("local[*]", "test")
+  import spark.implicits._
+
 
   // we treat different reads as a common read type
   // so for that purpose we map actual value to its common value that does exist in the rule type enumerator
@@ -592,13 +594,22 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("unionWithDefaults") {
-    import spark.implicits._
     val df1 = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("N1", "N2", "N3")
     val df2 = Seq(("A","B"),("B","C"),("C","D")).toDF("A1","A2")
     val df3 = Seq(3.14, 2.713, 9.81).toDF("F1")
 
     val data = Seq(df1, df2, df3).reduce(Helper.unionWithDefault(_,_))
     data.show(false)
+  }
+
+  test("mapper") {
+    val inputDf = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("IK1", "IK2", "OTHER")
+    val mapDf = Seq((1,2,"1&2"),(2,3,"2&3"),(3,4,"3&4")).toDF("MK1", "MK2", "MAPPED_VALUE")
+    val otherMapDf = Seq(("A","a"),("B","b")).toDF("MK1","MAPPED_VALUE")
+
+    Helper.mapper(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), "MAPPED_VALUE")
+
+
   }
 
 

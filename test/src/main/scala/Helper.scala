@@ -77,4 +77,16 @@ object Helper {
 
   }
 
+  def mapper(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String], mapDfValueCols: String*) : DataFrame  = {
+    // make sure the number of keys as of equal length
+    assert(inputDfKeyCols.size == mapDfKeyCols.size)
+    // make sure every specified key actually exists in relevant df
+    assert((inputDfKeyCols.diff(inputDf.columns).size == 0) && (mapDfKeyCols.diff(mapDf.columns).size == 0))
+    // make sure schema matches between keys for joining
+    inputDfKeyCols.zip(mapDfKeyCols).foreach( k => assert(inputDf.schema(k._1).dataType == mapDf.schema(k._2).dataType))
+    // make sure all target fields exist
+    assert(mapDfValueCols.diff(mapDf.columns).size == 0)
+    
+  }
+
 }
