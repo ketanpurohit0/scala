@@ -77,6 +77,13 @@ object Helper {
 
   }
 
+  def toColNo(colName: String) : Int = {
+    val initialPower = 0
+    val initialValue = 0
+    val r = colName.reverse.foldLeft(initialValue, initialPower) ((ini, letter) => ( ini._1 + (letter.toInt - 64) * math.pow(26, ini._2).toInt, ini._2+1) )
+    r._1
+  }
+
   def nullSafeJoin(left : DataFrame, right: DataFrame, colNames: Seq[String], joinType:String = "left"): DataFrame = {
     val joinCondition = colNames.foldLeft(lit(true))( (col, colName) => col && left(colName) <=> right(colName))
     val noNeedToDropCols = Seq("left_semi","left_anti").contains(joinType)
@@ -113,11 +120,9 @@ object Helper {
       }
     }
 
-    val colNamesZipped = inputDfKeyCols.zip(mapDfKeyCols)
-    val joinCondition = colNamesZipped.foldLeft(lit(true))( (col, colName) => col && inputDf(colName._1) <=> mapDf(colName._2))
-    val keepLeftCols = inputDf.columns.map(col(_))
-    val columnsToRetain = (keepLeftCols ++ keepRightCols)
-    inputDf.join(mapDf, joinCondition, joinType).select(columnsToRetain:_*)
-  }
+    val allLeftCols = inputDf.columns.map(col(_))
+    val columnsToRetain = (allLeftCols ++ keepRightCols)
+    nullSafeJoin2(inputDf, mapDf, inputDfKeyCols, mapDfKeyCols, joinType).select(columnsToRetain:_*)
 
+    }
 }

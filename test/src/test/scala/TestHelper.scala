@@ -4,7 +4,7 @@ package com.kkp.Unt
 import com.kkp.Unt.Helper.unionWithDefault
 import com.typesafe.config.ConfigFactory
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
-import org.apache.spark.sql.{Column, DataFrame, Encoders, SparkSession}
+import org.apache.spark.sql.{Column, DataFrame, Encoders, SparkSession, functions}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
 
@@ -593,6 +593,14 @@ class TestHelper extends  AnyFunSuite {
     })
   }
 
+  test("toColNo") {
+    assert(Helper.toColNo("A") == 1)
+    assert(Helper.toColNo("Z") == 26)
+    assert(Helper.toColNo(colName = "CX") == 102)
+    assert(Helper.toColNo(colName = "BC") == 55)
+
+  }
+
   test("unionWithDefaults") {
     val df1 = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("N1", "N2", "N3")
     val df2 = Seq(("A","B"),("B","C"),("C","D")).toDF("A1","A2")
@@ -635,17 +643,31 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("nullSafeMapperJoin") {
-    val inputDf = Seq((1,2,3),(2,3,4),(3,4,5),(4,5,6)).toDF("IK1", "IK2", "OTHER")
-    val mapDf = Seq((1,2,"1&2"),(2,3,"2&3"),(3,4,"3&4")).toDF("MK1", "MK2", "MAPPED_VALUE")
-    val otherMapDf = Seq(("A","a"),("B","b")).toDF("MK1","MAPPED_VALUE")
+    val inputDf = Seq((1,2,3,"A"),(2,3,4,"B"),(3,4,5,"C"),(4,5,6,"D"),(5,6,7,"CX")).toDF("IK1", "IK2", "OTHER","COL_NAME")
+    val mapDf = Seq((1,2,"1&2","2&1"),(2,3,"2&3","3&2"),(3,4,"3&4","4&3")).toDF("MK1", "MK2", "MAPPED_VALUE1","MAPPED_VALUE2")
+    val anotherMapDf = Seq((2,3,"2&3","3&2"),(3,4,"3&4","4&3"),(4,5,"4&5","5&4")).toDF("MK1", "MK2", "ANOTHER_MAPPED_VALUE1","ANOTHER_MAPPED_VALUE2")
+    val asciiMapDf = ('A' to 'Z').map(c => (c.toString, c.toInt - 64)).toDF("COL_NAME", "COL_NO")
+    val asciiMap2Df = Seq("AA", "BB","CX").map( s => (s, Helper.toColNo(s))).toDF("COL_NAME", "COL_NO2")
     val joinType = "left_outer"
 
     println(s"-- $joinType")
-    val r = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE")
+    val r = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE1")
     r.show(false)
 
-    val r2 = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), false, joinType, "MAPPED_VALUE")
+    val r2 = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, "MAPPED_VALUE1", "MAPPED_VALUE2")
     r2.show(false)
+
+    val r3 = Helper.nullSafeMapperJoin(inputDf, mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"), true, joinType, Seq("MAPPED_VALUE1", "MAPPED_VALUE2"):_*)
+    r3.show(false)
+
+    // use different maps
+    val df = Seq(
+        (mapDf, Seq("IK1","IK2"),Seq("MK1","MK2"),"MAPPED_VALUE1"),
+        (anotherMapDf, Seq("IK2","OTHER"), Seq("MK1","MK2"),"ANOTHER_MAPPED_VALUE1"),
+        (asciiMapDf, Seq("COL_NAME"), Seq("COL_NAME"), "COL_NO"),
+      (asciiMap2Df, Seq("COL_NAME"),Seq("COL_NAME"), "COL_NO2")
+    ).foldLeft(inputDf) ( (idf, item) => Helper.nullSafeMapperJoin(idf, item._1, item._2, item._3, true, joinType, item._4))
+    df.show(false)
   }
 
 
