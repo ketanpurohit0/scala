@@ -77,6 +77,13 @@ object Helper {
 
   }
 
+  def nullSafeJoin(left : DataFrame, right: DataFrame, colNames: Seq[String], joinType:String = "inner"): DataFrame = {
+    val joinCondition = colNames.foldLeft(lit(true))( (col, colName) => col && left(colName) <=> right(colName))
+    val noNeedToDropCols = Seq("left_semi","left_anti").contains(joinType)
+    val tableToDropColFrom = if (Seq("right","right_outer").contains(joinType)) left else right
+    colNames.foldLeft(left.join(right, joinCondition, joinType)) ((df, colName) => if (!noNeedToDropCols) df.drop(tableToDropColFrom(colName)) else df)
+  }
+
   def mapper(inputDf: DataFrame, mapDf: DataFrame, inputDfKeyCols: Seq[String], mapDfKeyCols: Seq[String], mapDfValueCols: String*) : DataFrame  = {
     // make sure the number of keys as of equal length
     assert(inputDfKeyCols.size == mapDfKeyCols.size)
@@ -86,7 +93,9 @@ object Helper {
     inputDfKeyCols.zip(mapDfKeyCols).foreach( k => assert(inputDf.schema(k._1).dataType == mapDf.schema(k._2).dataType))
     // make sure all target fields exist
     assert(mapDfValueCols.diff(mapDf.columns).size == 0)
-    
+
+    inputDf.join(mapDf)
+
   }
 
 }

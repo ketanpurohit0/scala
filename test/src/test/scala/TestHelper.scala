@@ -602,6 +602,15 @@ class TestHelper extends  AnyFunSuite {
     data.show(false)
   }
 
+  test("nullSafeJoin") {
+    val df1 = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("N1", "N2", "N3")
+    val df2 = Seq((1,2,3.1),(2,3,4.1),(3,4,5.1)).toDF("N1", "N2", "N3f")
+    val r = Helper.nullSafeJoin(df1, df2, Seq("N1","N2"), "left")
+    r.show(false)
+
+
+  }
+
   test("mapper") {
     val inputDf = Seq((1,2,3),(2,3,4),(3,4,5)).toDF("IK1", "IK2", "OTHER")
     val mapDf = Seq((1,2,"1&2"),(2,3,"2&3"),(3,4,"3&4")).toDF("MK1", "MK2", "MAPPED_VALUE")
