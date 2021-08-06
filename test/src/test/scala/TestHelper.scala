@@ -680,5 +680,14 @@ class TestHelper extends  AnyFunSuite {
     df.show(false)
   }
 
+  test("anotherLkupTest") {
+    val inputDf = Seq(("D","1"),("C","2")).toDF("NSFR_COL","NSFR_ROW")
+    val asciiMapDf = ('A' to 'Z').map(c => (c.toString, c.toInt - 64)).toDF("COL_NAME", "COL_NO")
+
+    val df = Helper.nullSafeLookupJoin(inputDf, asciiMapDf, Seq("NSFR_COL"), Seq("COL_NAME"), true, "left_outer", "COL_NO")
+    df.show(false)
+
+  }
+
 
 }
