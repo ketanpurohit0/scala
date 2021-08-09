@@ -690,5 +690,15 @@ class TestHelper extends  AnyFunSuite {
 
   }
 
+  test("whenTest") {
+    val df = Seq("ABC","DEF","ABCDEF").toDF("STRING_VAL")
+    val expr = "STRING_VAL = 'A'+'B'+'C'"
+    assert (df.where(expr).count() == 0)
+    val expr2 = expr.replace("'+'","' || '")
+    assert(df.where(expr2).count() == 1)
+    val expr3 = expr.replaceAll(raw"('\s*\+\s*')", "' || '")
+    assert(df.filter(expr3).count == 1)
+  }
+
 
 }
