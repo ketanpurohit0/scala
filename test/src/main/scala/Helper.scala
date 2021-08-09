@@ -6,6 +6,7 @@ import org.apache.spark.sql.{Column, DataFrame, SparkSession}
 import java.sql.Connection
 import java.sql.{DriverManager, ResultSet}
 import java.sql.Driver
+import scala.collection.mutable.ListBuffer
 object Helper {
 
   def printMe(m :String) : Unit = {
@@ -82,6 +83,27 @@ object Helper {
     val initialValue = 0
     val r = colName.reverse.foldLeft(initialValue, initialPower) ((ini, letter) => ( ini._1 + (letter.toInt - 64) * math.pow(26, ini._2).toInt, ini._2+1) )
     r._1
+  }
+
+  def toColName(colNo: Int) : String = {
+    var q = ListBuffer[Int]()
+    var cn = colNo
+    var qr = (cn / 26, cn % 26)
+    while (qr._1 >= 26 ) {
+      q += qr._2
+      qr = (qr._1 / 26, qr._1 % 26)
+    }
+    q += qr._2
+    q += qr._1
+    var k = 0
+    while (( k < q.length - 1) && (q(k) <= 0)) {
+      q(k) = q(k) + 26
+      k+=1
+      if (k < q.length) {
+         q(k) = q(k) - 1
+      }
+    }
+    q.map(n => (n - 1 + 'A').toChar).filter(_ != '@').mkString("").reverse
   }
 
   def nullSafeJoin(left : DataFrame, right: DataFrame, colNames: Seq[String], joinType:String = "left"): DataFrame = {

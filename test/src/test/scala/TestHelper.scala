@@ -1,7 +1,7 @@
 package com.kkp.Unt
 
 //import com.kkp.Unt.Helper
-import com.kkp.Unt.Helper.unionWithDefault
+import com.kkp.Unt.Helper.{toColName, unionWithDefault}
 import com.typesafe.config.ConfigFactory
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
 import org.apache.spark.sql.{Column, DataFrame, Encoders, SparkSession, functions}
@@ -594,11 +594,12 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("toColNo") {
-    assert(Helper.toColNo("A") == 1)
-    assert(Helper.toColNo("Z") == 26)
-    assert(Helper.toColNo(colName = "CX") == 102)
-    assert(Helper.toColNo(colName = "BC") == 55)
+    Seq((1,"A"), (26,"Z"), (102,"CX"), (55, "BC"), (52, "AZ"), (626,"XB"), (444,"QB"), (676, "YZ"), (702, "ZZ"),(513, "SS"),(416, "OZ"),(364, "MZ"),(19010,"ABCD")).foreach(c => (assert(Helper.toColNo(c._2) == c._1)))
 
+  }
+
+  test("toColName") {
+    Seq((1,"A"), (26,"Z"), (102,"CX"), (55, "BC"), (52, "AZ"), (626,"XB"), (444,"QB"), (676, "YZ"), (702, "ZZ"),(513, "SS"),(416, "OZ"),(364, "MZ"),(19010,"ABCD")).foreach(c => (assert(Helper.toColName(c._1) == c._2)))
   }
 
   test("unionWithDefaults") {
