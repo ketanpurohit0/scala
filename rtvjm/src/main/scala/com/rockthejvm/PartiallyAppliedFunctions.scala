@@ -39,6 +39,5 @@ object PartiallyAppliedFunctions extends App {
 
   def multiArgAdder3(x:Int)(y:Int)(z:Int) = x+y+z
   val twoArgsRemaining = multiArgAdder3(4) _ // we get curried on y, z
-  val oneArgRemaining = twoArgsRemaining(3) _
   val oneArgRemaining2 = multiArgAdder3(4)(3) _
 }

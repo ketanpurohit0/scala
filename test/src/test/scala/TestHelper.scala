@@ -12,7 +12,7 @@ import java.util.Properties
 import scala.collection.mutable.ListBuffer
 
 case class Foo(a:String)
-case class Data(id: Int, dept_name: String, dept_id: Int)
+case class Data(ID: Int, dept_name: String, dept_id: Int)
 case class Rule(scenario: String, targetTable: String, ruleOrder: Int, ruleType: String, ruleText: String)
 object RuleTypeEnumeration extends Enumeration {
   type RuleTypeEnumeration = Value
@@ -413,7 +413,7 @@ class TestHelper extends  AnyFunSuite {
       val id = group._1
       val data = group._2.sortBy(s => s.dept_id)
       println(id, data.length)
-      data.foreach(d => println(d.id, d.dept_id))
+      data.foreach(d => println(d.ID, d.dept_id))
       val messages = List("A", "B", "C")
       messages
     })
@@ -444,6 +444,19 @@ class TestHelper extends  AnyFunSuite {
       }))
     println(s"wo_convert_back: $e1")
 
+
+  }
+
+  test("collectToListAndBackToDf") {
+    val df = makeLargeDf(spark, 1)
+    import spark.implicits._
+    val schema = Encoders.product[Data].schema
+    val dataArr = df.as[Data].collect()
+    val df2 = dataArr.toSeq.toDF()
+    df.printSchema()
+    df2.printSchema()
+    df.show()
+    df2.show()
 
   }
 
