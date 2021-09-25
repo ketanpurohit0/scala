@@ -5,6 +5,7 @@ object SparkHelper {
   def getSparkSession(sparkMaster: String, jarsFolder: String): SparkSession = {
     val conf = new SparkConf().setMaster(sparkMaster).set("spark.app.name", "TEST")
     val sc = new SparkContext(conf)
+    sc.setLogLevel("ERROR")
     val spark = SparkSession.builder().getOrCreate()
     spark.conf.set("spark.sql.crossJoin.enabled", true)
     conf.set("spark.jars", jarsFolder)

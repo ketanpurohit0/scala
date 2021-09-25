@@ -1,4 +1,5 @@
 import com.typesafe.scalalogging.Logger
+import org.apache.spark.sql.functions.{col, explode, split, when, lit}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -115,6 +116,64 @@ class tests extends AnyFunSuite {
     val df2 = df.orderBy("TABLE","RULE_ORDER")
     df.show(false)
     df2.show(false)
+  }
+
+  test("rollUp") {
+    val data = Seq[(String, Long)](("ENGLAND",1000),("WALES", 400), ("SCOTLAND", 100), ("IRELAND", 600))
+    val rollup = Seq[(String, String)](("MAINLAND","ENGLAND;WALES;SCOTLAND"),("UK","IRELAND;MAINLAND"))
+
+    import sparkSession.implicits._
+
+    var dataDf = data.toDF("COUNTRY","GDP")
+    var rollupDf = rollup.toDF("TARGET_FIELD","COMPOSITION_FIELDS")
+
+    dataDf.show()
+    rollupDf.show()
+
+    // split the ; delimited column
+    rollupDf = rollupDf.withColumn("COMPOSITION_FIELDS_SPLIT", split(col("COMPOSITION_FIELDS"), ";"))
+    rollupDf.show()
+
+    //
+    rollupDf = rollupDf.withColumn("COMPOSITION_FIELDS_SPLIT", explode(col("COMPOSITION_FIELDS_SPLIT")))
+    rollupDf.show()
+
+    //
+    dataDf = dataDf.join(rollupDf, col("COUNTRY") === col("COMPOSITION_FIELDS_SPLIT"), "left")
+
+    // aggregate
+    dataDf.groupBy(col("COUNTRY").as("TARGET_FIELD")).sum("GDP").as("GDP").show()
+
+    dataDf.groupBy(col("TARGET_FIELD")).sum("GDP").as("GDP").show()
+  }
+
+  test("rollUp2") {
+    val data = Seq[(String, Long)](("ENGLAND",1000),("WALES", 400), ("SCOTLAND", 100), ("IRELAND", 600))
+    val rollup = Seq[(String, String, String)](("COUNTRY","MAINLAND","ENGLAND;WALES;SCOTLAND"),("LEVEL1","UK","IRELAND;MAINLAND"))
+
+    import sparkSession.implicits._
+
+
+    var dataDf = data.toDF("COUNTRY","GDP")
+
+    rollup.foreach(
+      r => {
+        val rollup_level = r._1
+        val target_field = r._2
+        val composition_fields = r._3
+        val seq = Seq[(String, String)]((target_field, composition_fields))
+        val rollupDf = seq
+                      .toDF(s"ROLLUP_${rollup_level}","COMPOSITION_FIELDS")
+                      .withColumn("COMPOSITION_FIELDS_SPLIT", split(col("COMPOSITION_FIELDS"), ";"))
+                      .withColumn("COMPOSITION_FIELDS_SPLIT", explode(col("COMPOSITION_FIELDS_SPLIT")))
+
+        dataDf = dataDf.join(rollupDf, col(rollup_level) === col("COMPOSITION_FIELDS_SPLIT"), "left")
+        .drop(Seq("COMPOSITION_FIELDS", "COMPOSITION_FIELDS_SPLIT"):_*)
+        dataDf.show()
+      }
+    )
+
+
   }
 
 }
