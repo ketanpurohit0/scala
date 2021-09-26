@@ -1,5 +1,5 @@
 import com.typesafe.scalalogging.Logger
-import org.apache.spark.sql.functions.{col, explode, split, when, lit}
+import org.apache.spark.sql.functions.{col, explode, split, when, lit, sum}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -173,6 +173,48 @@ class tests extends AnyFunSuite {
       }
     )
 
+
+  }
+
+  test("rollUp3") {
+    val data = Seq[(String, Long)](("ENGLAND",1000),("WALES", 400), ("SCOTLAND", 100), ("IRELAND", 600), ("FRANCE", 211))
+    val rollup = Seq[(String, String)](("ENGLAND","MAINLAND;UK"),
+                                       ("SCOTLAND","MAINLAND;UK"),
+                                        ("WALES","MAINLAND;UK"),
+                                        ("IRELAND","UK;EU"),
+                                        ("FRANCE", "EU")
+    )
+
+    import sparkSession.implicits._
+
+    var dataDf = data.toDF("COUNTRY","GDP")
+    var rollupDf = rollup.toDF("TARGET_FIELD","COMPOSITION_FIELDS")
+
+    dataDf.show()
+    rollupDf.show()
+
+    // split the ; delimited column
+    rollupDf = rollupDf.withColumn("COMPOSITION_FIELDS_SPLIT", split(col("COMPOSITION_FIELDS"), ";"))
+    rollupDf.show()
+
+    // build the rollup
+    rollupDf = rollupDf.withColumn("COMPOSITION_FIELDS_SPLIT", explode(col("COMPOSITION_FIELDS_SPLIT")))
+    rollupDf.show()
+
+    //
+
+    dataDf.show()
+
+    // aggregate - base
+    dataDf.groupBy(col("COUNTRY").as("TARGET_FIELD")).agg(sum("GDP").as("GDP")).show()
+
+    // rollup
+    dataDf = dataDf.join(rollupDf, col("COUNTRY") === col("TARGET_FIELD"), "left")
+
+    dataDf.show()
+
+    // aggregate
+    dataDf.groupBy(col("COMPOSITION_FIELDS_SPLIT").as("TARGET_FIELD")).agg(sum("GDP").as("GDP")).show()
 
   }
 
