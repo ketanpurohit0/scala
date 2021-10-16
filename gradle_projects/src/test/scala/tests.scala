@@ -1,5 +1,5 @@
 import com.typesafe.scalalogging.Logger
-import org.apache.spark.sql.functions.{col, explode, split, when, lit, sum}
+import org.apache.spark.sql.functions.{col, explode, lit, split, sum, when}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -215,6 +215,39 @@ class tests extends AnyFunSuite {
 
     // aggregate
     dataDf.groupBy(col("COMPOSITION_FIELDS_SPLIT").as("TARGET_FIELD")).agg(sum("GDP").as("GDP")).show()
+
+  }
+
+  test("round") {
+    (1 to 100).foreach(n => {
+      var r = (math.random()*1000000).toLong
+      val r1  = (r.toDouble * n).toLong/100
+      val r2 =  (r.toDouble * n)/100
+      val r3 = r2.round  //setScale(2, BigDecimal.RoundingMode.HALF_UP).toLong
+      println(r, n, r1, r2, r3, r2 - r1, r3 - r1)
+    })
+  }
+
+  test("sparkVersion") {
+    println(s"Spark version: ${sparkSession.sparkContext.version}")
+  }
+
+  test("stateChange") {
+    import org.apache.spark.sql.{functions => F}
+    import org.apache.spark.sql.expressions.Window
+    val data = Seq[(String, Int, Long)](("ENGLAND",1, 1000),("ENGLAND", 2, 400), ("ENGLAND", 3, 600), ("SCOTLAND",1, 100), ("SCOTLAND", 2, 100), ("SCOTLAND", 3, 211), ("SCOTLAND", 4, 1000))
+    import sparkSession.implicits._
+    var df = data.toDF("COUNTRY", "INDEX", "GDP")
+    val w = Window.orderBy("COUNTRY","INDEX").partitionBy("COUNTRY")
+
+    val stateDelta = F.udf( (lag0 : Long, lag1: Long) => {lag0 - lag1})
+    df = df.withColumn("DELTA", stateDelta(F.lag("GDP", 0).over(w), F.lag("GDP", 1).over(w)))
+    df.show(100, false)
+
+    val w1 = w.rangeBetween(Window.unboundedPreceding, 0)
+
+    df = df.withColumn("RUNNING_DELTA", F.sum("DELTA").over(w1))
+    df.show(100, false)
 
   }
 
