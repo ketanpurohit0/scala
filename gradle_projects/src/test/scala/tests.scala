@@ -1,6 +1,6 @@
 import com.typesafe.scalalogging.Logger
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{col, explode, split, sum}
+import org.apache.spark.sql.functions.{asc, col, explode, split, sum}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -269,6 +269,46 @@ class tests extends AnyFunSuite {
 
     resultDf.show()
 
+  }
+
+  test("rollUpViaJoinsMultiLevel") {
+    
+    // FIELD_NAME, FIELD_VALUE
+    val data = Seq[(String, Double)](("F1", 100.0), ("F2", 200.00), ("F3", 300.0))
+    
+    // LEVEL, Seq(SOURCE_FIELD, WEIGHT, TARGET_FIELD)
+    val rollupMetaData = Seq[(Int, Seq[(String, Double, String)])](
+      (1,     Seq(("F1", 1.0, "F4"),("F2", 1, "F4"),("F3", 1, "F4"),("F1", 1, "F5"),("F3", -2.0/3, "F5"),("M",1,"F5"))),
+      (2,     Seq(("F4", 1, "F6"),("F5", -1, "F6"))),
+      (3,     Seq(("F6", -3.1415926535, "PI"))),
+      (3,     Seq(("F5", -3.1415926535, "PI2")))
+    )
+    import sparkSession.implicits._
+
+    // FIELD_NAME, FIELD_VALUE
+    var df = data.toDF("FIELD_NAME", "FIELD_VALUE")
+    
+    // LEVEL, SOURCE_FIELD, WEIGHT, TARGET_FIELD
+    val rollupMetaDataDf = rollupMetaData.toDF("LEVEL", "SEQ")
+      .withColumn("SEQ", explode(col("SEQ")))
+      .select("LEVEL","SEQ.*")
+      .toDF("LEVEL", "SOURCE_FIELD", "WEIGHT", "TARGET_FIELD")
+
+    val distinctRollupsByLevel = rollupMetaDataDf.select("LEVEL").distinct().orderBy(asc("LEVEL"))
+
+    val levels  = distinctRollupsByLevel.as[Int].collect()
+    
+    val rollups = levels.foldLeft(df){(accumulateDf, level) =>
+      accumulateDf
+        .union(rollupMetaDataDf.filter(col("LEVEL") === level).join(accumulateDf, rollupMetaDataDf.col("SOURCE_FIELD") === accumulateDf.col("FIELD_NAME"))
+          .withColumn("TARGET_VALUE", col("WEIGHT")*col("FIELD_VALUE"))
+          .groupBy(col("TARGET_FIELD").as("FIELD_NAME")).agg(sum("TARGET_VALUE").as("FIELD_VALUE")))
+    }
+
+
+    df.show()
+    rollups.printSchema()
+    rollups.show()
   }
 
 
