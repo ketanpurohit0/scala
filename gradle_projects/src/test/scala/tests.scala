@@ -277,8 +277,18 @@ class tests extends AnyFunSuite {
     val data = Seq[(String, Double)](("F1", 100.0), ("F2", 200.00), ("F3", 300.0))
     
     // LEVEL, Seq(SOURCE_FIELD, WEIGHT, TARGET_FIELD)
+    // note: A LEVEL can be broken across several lines for same results
+    // note: This is a PoC - the following data could come from a static table source
+    // note: LEVEL represents some hierarchical level, where fields are generated at a lower hierarchy
+    // then contribute to higher levels
     val rollupMetaData = Seq[(Int, Seq[(String, Double, String)])](
-      (1,     Seq(("F1", 1.0, "F4"),("F2", 1, "F4"),("F3", 1, "F4"),("F1", 1, "F5"),("F3", -2.0/3, "F5"),("M",1,"F5"))),
+      (1,     Seq(("F1", 1.0, "F4"))),
+      (1,     Seq(("F2", 1, "F4"))),
+      (1,     Seq(("F3", 1, "F4"))),
+      (1,     Seq(("F1", 1, "F5"))),
+      (1,     Seq(("F3", -2.0/3, "F5"))),
+      (1,     Seq(("M",1,"F5"))),
+
       (2,     Seq(("F4", 1, "F6"),("F5", -1, "F6"))),
       (3,     Seq(("F6", -3.1415926535, "PI"))),
       (3,     Seq(("F5", -3.1415926535, "PI2")))
@@ -294,6 +304,29 @@ class tests extends AnyFunSuite {
       .select("LEVEL","SEQ.*")
       .toDF("LEVEL", "SOURCE_FIELD", "WEIGHT", "TARGET_FIELD")
 
+    // for example (example if sourcing from database)
+    //    rollupMetaDataDf.printSchema()
+    //    root
+    //    |-- LEVEL: integer (nullable = false)
+    //    |-- SOURCE_FIELD: string (nullable = true)
+    //    |-- WEIGHT: double (nullable = true)
+    //    |-- TARGET_FIELD: string (nullable = true)
+    //
+    //    rollupMetaDataDf.show()
+    //    +-----+------------+-------------------+------------+
+    //    |LEVEL|SOURCE_FIELD|             WEIGHT|TARGET_FIELD|
+    //    +-----+------------+-------------------+------------+
+    //    |    1|          F1|                1.0|          F4|
+    //    |    1|          F2|                1.0|          F4|
+    //    |    1|          F3|                1.0|          F4|
+    //    |    1|          F1|                1.0|          F5|
+    //    |    1|          F3|-0.6666666666666666|          F5|
+    //    |    1|           M|                1.0|          F5|
+    //    |    2|          F4|                1.0|          F6|
+    //    |    2|          F5|               -1.0|          F6|
+    //    |    3|          F6|      -3.1415926535|          PI|
+    //    |    3|          F5|      -3.1415926535|         PI2|
+    //    +-----+------------+-------------------+------------+
     val distinctRollupsByLevel = rollupMetaDataDf.select("LEVEL").distinct().orderBy(asc("LEVEL"))
 
     val levels  = distinctRollupsByLevel.as[Int].collect()
