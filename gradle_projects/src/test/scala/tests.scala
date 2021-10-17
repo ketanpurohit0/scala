@@ -1,17 +1,18 @@
 import com.typesafe.scalalogging.Logger
-import org.apache.spark.sql.functions.{col, explode, lit, split, sum, when}
+import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.functions.{col, explode, split, sum}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
 class tests extends AnyFunSuite {
-  val sparkSession = SparkHelper.getSparkSession("local","")
+  val sparkSession: SparkSession = SparkHelper.getSparkSession("local","")
 
   def secondTimer[R] (text :String, block:R): R = {
     val t0 = System.nanoTime()
     val result = block
     val t1 = System.nanoTime()
-    println(s"ELAPSED TIME ${text} (sec): " + (t1-t0)/10E9)
-    return result
+    println(s"ELAPSED TIME $text (sec): " + (t1-t0)/10E9)
+    result
 
   }
 
@@ -26,11 +27,10 @@ class tests extends AnyFunSuite {
   test("comma") {
     val s = "1,2,105,221,1031"
     val maxval = s.split(",").map(_.toInt).max
-    assert(maxval.toInt == 1031)
+    assert(maxval == 1031)
   }
 
   test("parallelLoop") {
-    val loopSize : Int = 10
     import scala.collection.parallel.ForkJoinTaskSupport
     val poolSizes = Seq[Int](1,2,4,6,8)
     /*
@@ -55,7 +55,7 @@ class tests extends AnyFunSuite {
     val scenarios = Seq("A","B","C","D","E","F").par
     for (poolSize <- poolSizes) {
       scenarios.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(poolSize))
-      secondTimer(s"Parallel Test ${poolSize}", scenarios.foreach(scenario => {
+      secondTimer(s"Parallel Test $poolSize", scenarios.foreach(scenario => {
         val s=new scenario_handler(scenario)
         s.handler()
       }))
@@ -65,11 +65,11 @@ class tests extends AnyFunSuite {
   }
 
   class scenario_handler(scenario: String) {
-    val m_scenario = scenario
-    val logger = Logger(LoggerFactory.getLogger(this.getClass))
+    val m_scenario: String = scenario
+    val logger: Logger = Logger(LoggerFactory.getLogger(this.getClass))
 
     def handler() : Unit = {
-      println(s"Process ${m_scenario}, ${Thread.currentThread().getId}, ${Thread.currentThread().getName}")
+      println(s"Process $m_scenario, ${Thread.currentThread().getId}, ${Thread.currentThread().getName}")
       //logger.info("ff")
       println(logger.underlying.isDebugEnabled)
       println(logger.underlying.isWarnEnabled())
@@ -89,7 +89,7 @@ class tests extends AnyFunSuite {
     }
 
     def result() : BigInt = {
-      return seed
+      seed
     }
   }
 
@@ -103,7 +103,7 @@ class tests extends AnyFunSuite {
     val scenarios = Seq[String]("GENERIC", "A", "B","C")
     val process = scenarios.filter(_ != "GENERIC")
     val foo = process.map(p => Seq[String]("GENERIC",p))
-    var scenarios_in_par = foo.par
+    val scenarios_in_par = foo.par
     import scala.collection.parallel.ForkJoinTaskSupport
     scenarios_in_par.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(3))
     scenarios_in_par.foreach(pseq => println(Thread.currentThread().getId,pseq))
@@ -163,7 +163,7 @@ class tests extends AnyFunSuite {
         val composition_fields = r._3
         val seq = Seq[(String, String)]((target_field, composition_fields))
         val rollupDf = seq
-                      .toDF(s"ROLLUP_${rollup_level}","COMPOSITION_FIELDS")
+                      .toDF(s"ROLLUP_$rollup_level","COMPOSITION_FIELDS")
                       .withColumn("COMPOSITION_FIELDS_SPLIT", split(col("COMPOSITION_FIELDS"), ";"))
                       .withColumn("COMPOSITION_FIELDS_SPLIT", explode(col("COMPOSITION_FIELDS_SPLIT")))
 
@@ -220,7 +220,7 @@ class tests extends AnyFunSuite {
 
   test("round") {
     (1 to 100).foreach(n => {
-      var r = (math.random()*1000000).toLong
+      val r = (math.random() * 1000000).toLong
       val r1  = (r.toDouble * n).toLong/100
       val r2 =  (r.toDouble * n)/100
       val r3 = r2.round  //setScale(2, BigDecimal.RoundingMode.HALF_UP).toLong
@@ -233,8 +233,8 @@ class tests extends AnyFunSuite {
   }
 
   test("stateChange") {
-    import org.apache.spark.sql.{functions => F}
     import org.apache.spark.sql.expressions.Window
+    import org.apache.spark.sql.{functions => F}
     val data = Seq[(String, Int, Long)](("ENGLAND",1, 1000),("ENGLAND", 2, 400), ("ENGLAND", 3, 600), ("SCOTLAND",1, 100), ("SCOTLAND", 2, 100), ("SCOTLAND", 3, 211), ("SCOTLAND", 4, 1000))
     import sparkSession.implicits._
     var df = data.toDF("COUNTRY", "INDEX", "GDP")
@@ -242,12 +242,12 @@ class tests extends AnyFunSuite {
 
     val stateDelta = F.udf( (lag0 : Long, lag1: Long) => {lag0 - lag1})
     df = df.withColumn("DELTA", stateDelta(F.lag("GDP", 0).over(w), F.lag("GDP", 1).over(w)))
-    df.show(100, false)
+    df.show(100, truncate = false)
 
     val w1 = w.rangeBetween(Window.unboundedPreceding, 0)
 
     df = df.withColumn("RUNNING_DELTA", F.sum("DELTA").over(w1))
-    df.show(100, false)
+    df.show(100, truncate = false)
 
   }
 
