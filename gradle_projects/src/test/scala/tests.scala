@@ -1,6 +1,7 @@
 import com.typesafe.scalalogging.Logger
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.functions.{asc, col, concat_ws, explode, split, sum}
+import org.apache.spark.sql.types.DataType
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -281,15 +282,19 @@ class tests extends AnyFunSuite {
 
     rulesDf.show()
     dataDf.show()
+    dataDf.printSchema()
 
+    val origDataType = dataDf.schema("SRC_VAL").dataType
     val result = dataDf.alias("dataDf").join(rulesDf.alias("rulesDf"), Seq("TAG","SRC_VAL"), "left_outer").
       select("dataDf.*", "rulesDf.TARGET_VAL").
       withColumn("SRC_VAL",dataDf.col("SRC_VAL").cast("string")).
       withColumn("SRC_VAL", concat_ws(",", col("SRC_VAL"), col("TARGET_VAL").cast("string"))).
       drop("TARGET_VAL").
-      withColumn("SRC_VAL", explode(split(col("SRC_VAL"), ",")))
+      withColumn("SRC_VAL", explode(split(col("SRC_VAL"), ","))).
+      withColumn("SRC_VAL", col("SRC_VAL").cast(origDataType))
 
     result.show()
+    result.printSchema()
   }
 
   test("rollUpViaJoinsMultiLevel") {
