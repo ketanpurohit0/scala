@@ -282,7 +282,7 @@ class tests extends AnyFunSuite {
     rulesDf.show()
     dataDf.show()
 
-    val result = dataDf.alias("dataDf").join(rulesDf.alias("rulesDf"), dataDf.col("TAG") === rulesDf.col("TAG"), "left_outer").
+    val result = dataDf.alias("dataDf").join(rulesDf.alias("rulesDf"), Seq("TAG","SRC_VAL"), "left_outer").
       select("dataDf.*", "rulesDf.TARGET_VAL").
       withColumn("SRC_VAL",dataDf.col("SRC_VAL").cast("string")).
       withColumn("SRC_VAL", concat_ws(",", col("SRC_VAL"), col("TARGET_VAL").cast("string"))).
