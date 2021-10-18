@@ -1,6 +1,6 @@
 import com.typesafe.scalalogging.Logger
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{asc, col, explode, split, sum}
+import org.apache.spark.sql.functions.{asc, col, concat_ws, explode, split, sum}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -269,6 +269,27 @@ class tests extends AnyFunSuite {
 
     resultDf.show()
 
+  }
+
+  test("cloneAndChangeCol") {
+
+    val rules = Seq[(String, Int, Int)](("O",100,101),("P",200,201),("Q",300,301))
+    val data = Seq[(String, Int)](("O",100),("O",100),("P",200),("P",220),("Q",300),("Q",330),("S",0),("T",0),("U",0))
+    import sparkSession.implicits._
+    val rulesDf = rules.toDF("TAG", "SRC_VAL","TARGET_VAL")
+    val dataDf = data.toDF("TAG", "SRC_VAL")
+
+    rulesDf.show()
+    dataDf.show()
+
+    val result = dataDf.alias("dataDf").join(rulesDf.alias("rulesDf"), dataDf.col("TAG") === rulesDf.col("TAG"), "left_outer").
+      select("dataDf.*", "rulesDf.TARGET_VAL").
+      withColumn("SRC_VAL",dataDf.col("SRC_VAL").cast("string")).
+      withColumn("SRC_VAL", concat_ws(",", col("SRC_VAL"), col("TARGET_VAL").cast("string"))).
+      drop("TARGET_VAL").
+      withColumn("SRC_VAL", explode(split(col("SRC_VAL"), ",")))
+
+    result.show()
   }
 
   test("rollUpViaJoinsMultiLevel") {
