@@ -1,7 +1,7 @@
 import com.typesafe.scalalogging.Logger
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{abs, asc, col, concat, concat_ws, explode, lit, split, sum, to_date, round}
-import org.apache.spark.sql.types.{DataType, DoubleType, StringType}
+import org.apache.spark.sql.functions.{abs, asc, bround, col, concat, concat_ws, explode, lit, round, split, sum, to_date}
+import org.apache.spark.sql.types.{DataType, DoubleType, IntegerType, StringType}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -393,10 +393,10 @@ class tests extends AnyFunSuite {
               .withColumn("ASOF_DATE", to_date(col("ASOF_DATE"),"dd/MM/yyyy HH:mm:ss"))
               .withColumn("AMOUNT_SGD", col("AMOUNT_SGD").cast(DoubleType))
               .withColumn("RECVALUE", col("AMOUNT_SGD")*(lit(1.0)-col("MAS_FORM5_HAIRCUT").cast(DoubleType)))
-              .withColumn("MAS_FORM5_HAIRCUT", lit(100)*col("MAS_FORM5_HAIRCUT").cast(DoubleType))
+              .withColumn("MAS_FORM5_HAIRCUT", bround(lit(100)*col("MAS_FORM5_HAIRCUT").cast(DoubleType),1))
               //also round if required (here i assume rounding is required, but scaling down by 1000 is not required
-              .withColumn("AMOUNT_SGD", abs(round(col("AMOUNT_SGD")/SCALE_FACTOR)))
-              .withColumn("RECVALUE", abs(round(col("RECVALUE")/SCALE_FACTOR)))
+              .withColumn("AMOUNT_SGD", abs(round(col("AMOUNT_SGD")/SCALE_FACTOR)).cast(IntegerType))
+              .withColumn("RECVALUE", abs(round(col("RECVALUE")/SCALE_FACTOR)).cast(IntegerType))
 
     //    Now map field names like so
       //    MAS_FORM5_ASSET_TYPE -> OS1_F2S5_UNENCUMASSET_TYPE<ENUMERATORCOL>
