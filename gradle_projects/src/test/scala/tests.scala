@@ -398,15 +398,21 @@ class tests extends AnyFunSuite {
                                 "MAS_FORM5_HAIRCUT" -> "ON1_F2S5_UNENCUMASSET_HAIRCUT",
                                 "RECVALUE" -> "ON0_F2S5_UNENCUMASSET_RECVALUE"
                               )
-    columnsToCreateFieldNameColFor.foreach(c => {
-      df2 = df2.withColumn(s"${c}_FN", concat(Seq(lit(mapToFieldNameValues(c)), col("ENUMERATOR")):_*))
-    })
+//    columnsToCreateFieldNameColFor.foreach(c => {
+//      df2 = df2.withColumn(s"${c}_FN", concat(Seq(lit(mapToFieldNameValues(c)), col("ENUMERATOR")):_*))
+//    })
+//
+//    df2.show()
+//
+//    columnsToCreateFieldNameColFor.foreach(c =>
+//      df2.select(col(s"${c}_FN").as("FIELD_NAME"), col(c).as("FIELD_VALUE")).show(false)
+//    )
 
-    df2.show()
+    val modifiedDf2 = columnsToCreateFieldNameColFor.foldLeft(df2) {
+      (df, c) => df.withColumn(s"${c}_FN", concat(Seq(lit(mapToFieldNameValues(c)), col("ENUMERATOR")):_*))
+    }
 
-    columnsToCreateFieldNameColFor.foreach(c =>
-      df2.select(col(s"${c}_FN").as("FIELD_NAME"), col(c).as("FIELD_VALUE")).show(false)
-    )
+    modifiedDf2.show(false)
 
 
   }
