@@ -1,7 +1,7 @@
 import com.typesafe.scalalogging.Logger
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{asc, col, concat_ws, explode, split, sum}
-import org.apache.spark.sql.types.DataType
+import org.apache.spark.sql.functions.{asc, col, concat_ws, explode, lit, split, sum, to_date, concat}
+import org.apache.spark.sql.types.{DataType, DoubleType, StringType}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -368,6 +368,47 @@ class tests extends AnyFunSuite {
     df.show()
     rollups.printSchema()
     rollups.show()
+  }
+
+  test("pivotStyle") {
+    val cwd = System.getProperty("user.dir")
+    val df = sparkSession.read.format("csv").option("header", "true").load("file:/MyWork/GIT/scala/gradle_projects/src/test/scala/sec5.csv")
+    var df2 = df
+              .withColumn("ENUMERATOR", col("ENUMERATOR").cast("int"))
+              .withColumn("ASOF_DATE", to_date(col("ASOF_DATE"),"dd/MM/yyyy HH:mm:ss"))
+              .withColumn("AMOUNT_SGD", col("AMOUNT_SGD").cast(DoubleType))
+              .withColumn("RECVALUE", col("AMOUNT_SGD")*(lit(1.0)-col("MAS_FORM5_HAIRCUT").cast(DoubleType)))
+              .withColumn("MAS_FORM5_HAIRCUT", lit(100)*col("MAS_FORM5_HAIRCUT").cast(DoubleType))
+
+    df2.printSchema()
+    df2.show()
+
+//    MAS_FORM5_ASSET_TYPE -> OS1_F2S5_UNENCUMASSET_TYPE<ENUMERATOR>
+//    MAS_FORM5_PLATFORM -> OS1_F2S5_UNENCUMASSET_PLAT<ENUMERATOR>
+//    MAS_FORM5_LOCATION -> OS1_F2S5_UNENCUMASSET_LOC<ENUMERATOR>
+//    AMOUNT_SGD -> ON0_F2S5_UNENCUMASSET_AMT<ENUMERATOR>
+//    MAS_FORM5_HAIRCUT -> ON1_F2S5_UNENCUMASSET_HAIRCUT<ENUMERATOR>
+//    AMOUNT_SGD*(1 - MAS_FORM5_HAIRCUT) -> ON0_F2S5_UNENCUMASSET_RECVALUE<ENUMERATOR>
+
+    val columnsToCreateFieldNameColFor = Seq[String]("MAS_FORM5_ASSET_TYPE", "MAS_FORM5_PLATFORM", "MAS_FORM5_LOCATION","AMOUNT_SGD", "MAS_FORM5_HAIRCUT","RECVALUE")
+    val mapToFieldNameValues = Map("MAS_FORM5_ASSET_TYPE" -> "OS1_F2S5_UNENCUMASSET_TYPE",
+                                "MAS_FORM5_PLATFORM" -> "OS1_F2S5_UNENCUMASSET_PLAT",
+                                "MAS_FORM5_LOCATION" -> "OS1_F2S5_UNENCUMASSET_LOC",
+                                "AMOUNT_SGD" -> "ON0_F2S5_UNENCUMASSET_AMT",
+                                "MAS_FORM5_HAIRCUT" -> "ON1_F2S5_UNENCUMASSET_HAIRCUT",
+                                "RECVALUE" -> "ON0_F2S5_UNENCUMASSET_RECVALUE"
+                              )
+    columnsToCreateFieldNameColFor.foreach(c => {
+      df2 = df2.withColumn(s"${c}_FN", concat(Seq(lit(mapToFieldNameValues(c)), col("ENUMERATOR")):_*))
+    })
+
+    df2.show()
+
+    columnsToCreateFieldNameColFor.foreach(c =>
+      df2.select(col(s"${c}_FN").as("FIELD_NAME"), col(c).as("FIELD_VALUE")).show(false)
+    )
+
+
   }
 
 
