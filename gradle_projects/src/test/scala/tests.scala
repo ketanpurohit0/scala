@@ -1,6 +1,6 @@
 import com.typesafe.scalalogging.Logger
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{asc, col, concat_ws, explode, lit, split, sum, to_date, concat}
+import org.apache.spark.sql.functions.{abs, asc, col, concat, concat_ws, explode, lit, split, sum, to_date, round}
 import org.apache.spark.sql.types.{DataType, DoubleType, StringType}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
@@ -371,26 +371,43 @@ class tests extends AnyFunSuite {
   }
 
   test("pivotStyle") {
-    val cwd = System.getProperty("user.dir")
-    val df = sparkSession.read.format("csv").option("header", "true").load("file:/MyWork/GIT/scala/gradle_projects/src/test/scala/sec5.csv")
-    var df2 = df
-              .withColumn("ENUMERATOR", col("ENUMERATOR").cast("int"))
+
+    // Here we have a pretend SEC5 file for MAS_FORM2 which are presently loaded as adjustmnets
+    // in world of MARIO it may be different. But the code for doing so can be adapted for
+    // different column names etc
+
+    // load the data - [will not be relevant one replaced with actual source]
+    val df = sparkSession.read.format("csv")
+              .option("header", "true")
+              .option("inferSchema", "true")
+              .load("file:/MyWork/GIT/scala/gradle_projects/src/test/scala/sec5.csv")
+
+    // name of enumerator field indicating its position in template
+    val nameOfEnumeratorColumn = "ENUMERATOR"
+    // 1:scaling factor required - I think no scale factor is required, hence 1
+    val SCALE_FACTOR = 1
+
+    // convert to suit purpose [may or may not be required once correct source available]
+    val df2 = df
+              .withColumn(nameOfEnumeratorColumn, col(nameOfEnumeratorColumn).cast("int"))
               .withColumn("ASOF_DATE", to_date(col("ASOF_DATE"),"dd/MM/yyyy HH:mm:ss"))
               .withColumn("AMOUNT_SGD", col("AMOUNT_SGD").cast(DoubleType))
               .withColumn("RECVALUE", col("AMOUNT_SGD")*(lit(1.0)-col("MAS_FORM5_HAIRCUT").cast(DoubleType)))
               .withColumn("MAS_FORM5_HAIRCUT", lit(100)*col("MAS_FORM5_HAIRCUT").cast(DoubleType))
+              //also round if required (here i assume rounding is required, but scaling down by 1000 is not required
+              .withColumn("AMOUNT_SGD", abs(round(col("AMOUNT_SGD")/SCALE_FACTOR)))
+              .withColumn("RECVALUE", abs(round(col("RECVALUE")/SCALE_FACTOR)))
 
-    df2.printSchema()
-    df2.show()
+    //    Now map field names like so
+      //    MAS_FORM5_ASSET_TYPE -> OS1_F2S5_UNENCUMASSET_TYPE<ENUMERATORCOL>
+      //    MAS_FORM5_PLATFORM -> OS1_F2S5_UNENCUMASSET_PLAT<ENUMERATORCOL>
+      //    MAS_FORM5_LOCATION -> OS1_F2S5_UNENCUMASSET_LOC<ENUMERATORCOL>
+      //    AMOUNT_SGD -> ON0_F2S5_UNENCUMASSET_AMT<ENUMERATORCOL>
+      //    MAS_FORM5_HAIRCUT -> ON1_F2S5_UNENCUMASSET_HAIRCUT<ENUMERATORCOL>
+      //    AMOUNT_SGD*(1 - MAS_FORM5_HAIRCUT) -> ON0_F2S5_UNENCUMASSET_RECVALUE<ENUMERATORCOL>
 
-//    MAS_FORM5_ASSET_TYPE -> OS1_F2S5_UNENCUMASSET_TYPE<ENUMERATOR>
-//    MAS_FORM5_PLATFORM -> OS1_F2S5_UNENCUMASSET_PLAT<ENUMERATOR>
-//    MAS_FORM5_LOCATION -> OS1_F2S5_UNENCUMASSET_LOC<ENUMERATOR>
-//    AMOUNT_SGD -> ON0_F2S5_UNENCUMASSET_AMT<ENUMERATOR>
-//    MAS_FORM5_HAIRCUT -> ON1_F2S5_UNENCUMASSET_HAIRCUT<ENUMERATOR>
-//    AMOUNT_SGD*(1 - MAS_FORM5_HAIRCUT) -> ON0_F2S5_UNENCUMASSET_RECVALUE<ENUMERATOR>
 
-    val columnsToCreateFieldNameColFor = Seq[String]("MAS_FORM5_ASSET_TYPE", "MAS_FORM5_PLATFORM", "MAS_FORM5_LOCATION","AMOUNT_SGD", "MAS_FORM5_HAIRCUT","RECVALUE")
+    // name of column requiring mapping
     val mapToFieldNameValues = Map("MAS_FORM5_ASSET_TYPE" -> "OS1_F2S5_UNENCUMASSET_TYPE",
                                 "MAS_FORM5_PLATFORM" -> "OS1_F2S5_UNENCUMASSET_PLAT",
                                 "MAS_FORM5_LOCATION" -> "OS1_F2S5_UNENCUMASSET_LOC",
@@ -398,23 +415,19 @@ class tests extends AnyFunSuite {
                                 "MAS_FORM5_HAIRCUT" -> "ON1_F2S5_UNENCUMASSET_HAIRCUT",
                                 "RECVALUE" -> "ON0_F2S5_UNENCUMASSET_RECVALUE"
                               )
-//    columnsToCreateFieldNameColFor.foreach(c => {
-//      df2 = df2.withColumn(s"${c}_FN", concat(Seq(lit(mapToFieldNameValues(c)), col("ENUMERATOR")):_*))
-//    })
-//
-//    df2.show()
-//
-//    columnsToCreateFieldNameColFor.foreach(c =>
-//      df2.select(col(s"${c}_FN").as("FIELD_NAME"), col(c).as("FIELD_VALUE")).show(false)
-//    )
+
+    val columnsToCreateFieldNameColFor = mapToFieldNameValues.keys
 
     val modifiedDf2 = columnsToCreateFieldNameColFor.foldLeft(df2) {
-      (df, c) => df.withColumn(s"${c}_FN", concat(Seq(lit(mapToFieldNameValues(c)), col("ENUMERATOR")):_*))
+      (df, c) => df.withColumn(s"${c}_FN", concat(Seq(lit(mapToFieldNameValues(c)), col(nameOfEnumeratorColumn)):_*))
     }
 
-    modifiedDf2.show(false)
 
+    val modifiedDf3 = columnsToCreateFieldNameColFor
+                      .map( c => {modifiedDf2.select(col(s"${c}_FN").as("FIELD_NAME"), col(c).as("FIELD_VALUE"))})
+                      .reduce(_ union _)
 
+    modifiedDf3.show(false)
   }
 
 
