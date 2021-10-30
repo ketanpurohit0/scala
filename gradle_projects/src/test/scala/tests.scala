@@ -253,8 +253,8 @@ class tests extends AnyFunSuite {
   }
 
   test("rollUpViaJoins") {
-    val data = Seq[(String, Double)](("F1", 100.0), ("F2", 200.00), ("F3", 300.0))
-    val rollupMetaData = Seq[(String, Double, String)](("F1", 1.0, "F4"),("F2", 1, "F4"),("F3", 1, "F4"),("F1", 1, "F5"),("F3", -2.0/3, "F5"),("M",1,"F5"))
+    val data = Seq[(String, Double)](("F1", 100.0), ("F2", 200.00), ("F3", 300.0),("F4",1000.0))
+    val rollupMetaData = Seq[(String, Double, String)](("F1", 10.0, "F4"),("F2", 10, "F4"),("F3", 10, "F4"),("F1", 1, "F5"),("F3", -2.0/3, "F5"),("M",1,"F5"))
     import sparkSession.implicits._
     var df = data.toDF("FIELD_NAME", "FIELD_VALUE")
     val rollupMetaDataDf = rollupMetaData.toDF("SOURCE_FIELD", "WEIGHT", "TARGET_FIELD")
@@ -266,7 +266,7 @@ class tests extends AnyFunSuite {
                           .withColumn("TARGET_VALUE", col("WEIGHT")*col("FIELD_VALUE"))
                           .groupBy(col("TARGET_FIELD").as("FIELD_NAME")).agg(sum("TARGET_VALUE").as("FIELD_VALUE"))
 
-    val resultDf = df.union(rolledUpDf)
+    val resultDf = df.union(rolledUpDf).groupBy("FIELD_NAME").agg(sum("FIELD_VALUE").as("FIELD_VALUE"))
 
     resultDf.show()
 
