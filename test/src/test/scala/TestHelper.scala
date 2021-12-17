@@ -1,9 +1,7 @@
-package com.kkp.Unt
-
-//import com.kkp.Unt.Helper
-import com.kkp.Unt.Helper.{toColName, unionWithDefault}
+import com.kkp.Unt.Helper
 import com.typesafe.config.ConfigFactory
 import org.apache.spark.sql.catalyst.expressions.GenericRowWithSchema
+import org.apache.spark.sql.catalyst.plans.logical.Window
 import org.apache.spark.sql.{Column, DataFrame, Encoders, SparkSession, functions}
 import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions._
@@ -67,6 +65,15 @@ class TestHelper extends  AnyFunSuite {
   def makeLargeDf(spark: SparkSession, n: Int) : DataFrame = {
     val data : List[(Int, String, Int)] = List[(Int, String, Int)]((1, "Finance", 10), (2, "Marketing", 20), (3, "Sales", 30), (4, "IT", 40), (5, "CTS", 41), (6, "CTS", 42))
     var deptColumns = List("ID", "dept_name", "dept_id")
+    import spark.implicits._
+    val rdd = spark.sparkContext.parallelize(replicateList(data,n))
+    val df = rdd.toDF(deptColumns:_*)
+    df
+  }
+
+  def makeLargeDf2(spark: SparkSession, n: Int) : DataFrame = {
+    val data : List[(String, String, String, String, String)] = List[(String, String, String, String, String)](("AAaaaaaA","VdfdfddV","fdfdfdC","Dfdfddd","dfdfdfdfdfdE"))
+    val deptColumns = List("C1", "C2", "C3", "C4", "C5")
     import spark.implicits._
     val rdd = spark.sparkContext.parallelize(replicateList(data,n))
     val df = rdd.toDF(deptColumns:_*)
@@ -177,7 +184,7 @@ class TestHelper extends  AnyFunSuite {
   }
 
   test("largeDfWriteToDB") {
-    val n = math.pow(2, 20).toInt
+    val n = math.pow(2, 15).toInt
     val df = makeLargeDf(spark, n)
     val config = ConfigFactory.load()
     val driver = config.getString("jdbc.driver")
@@ -185,7 +192,10 @@ class TestHelper extends  AnyFunSuite {
     val username = config.getString("jdbc.username")
     val password = config.getString("jdbc.password")
 
-    df.select("dept_id", "ID", "dept_name").write.mode("append")
+    println(df.count)
+    df.groupBy(spark_partition_id()).count().show(false)
+
+    df.write.mode("append")
       .format("jdbc")
       .option("url", url)
       .option("dbtable", "TARGET_FOR_SPARK_DF")
@@ -194,8 +204,141 @@ class TestHelper extends  AnyFunSuite {
       .save()
   }
 
+  test("oneTestToRuleThemAll") {
+
+    oneTestToRuleThemAll(spark)
+  }
+
+  private def oneTestToRuleThemAll(sparkSession: SparkSession) = {
+    def timer2[R](block: => R): (R, Long) = {
+      val s = System.nanoTime()
+      val r = block
+      val e = System.nanoTime()
+      (r, (e - s) / 1000000000)
+    }
+
+    def makeDf(spark: SparkSession, n: Int): DataFrame = {
+      val data: List[(Int, String, Int)] = List[(Int, String, Int)]((1, "Finance", 10), (2, "Marketing", 20), (3, "Sales", 30), (4, "IT", 40), (5, "CTS", 41), (6, "CTS", 42))
+      var deptColumns = List("ID", "dept_name", "dept_id")
+      import spark.implicits._
+      val rdd = spark.sparkContext.parallelize(replicateList(data, n))
+      val df = rdd.toDF(deptColumns: _*)
+      df
+    }
+
+    val n = math.pow(2, 16).toInt
+    // make a dataframe in memory seems to make it with across a number of partitions
+    val df = makeDf(sparkSession, n)
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    // test a write - log the number of partitions as well
+
+    println(s"WRITE rows : ${df.count}, partitions: ${df.rdd.getNumPartitions}")
+    df.groupBy(spark_partition_id()).count().show(false)
+
+    val (_, timedWrite) = timer2({
+      df.write.mode("append")
+        .format("jdbc")
+        .option("url", url)
+        .option("dbtable", "KP_WRITE_TEST_1")
+        .option("user", username)
+        .option("password", password)
+        .save()
+    }
+    )
+    println(s"WRITE sec: $timedWrite")
+
+    val partitionCols = "dept_id,dept_name"
+    val colsForPartition = partitionCols.split(",").map(c => col(c))
+
+    // test reads style 1
+    val dfReadPart = sparkSession.read
+      .format("jdbc")
+      .option("url", url)
+      .option("dbtable", "KP_WRITE_TEST_1")
+      .option("user", username)
+      .option("password", password)
+      .load()
+      .repartition(16, colsForPartition: _*)
+
+    println(s"READ.part rows : ${dfReadPart.count}, partitions: ${dfReadPart.rdd.getNumPartitions}")
+    dfReadPart.groupBy(spark_partition_id()).count().show(false)
+
+    // test reads style 2
+    val dfReadNonPart = sparkSession.read
+      .format("jdbc")
+      .option("url", url)
+      .option("dbtable", "KP_WRITE_TEST_1")
+      .option("user", username)
+      .option("password", password)
+      .load()
+
+    println(s"READ.npart rows : ${dfReadNonPart.count}, partitions: ${dfReadNonPart.rdd.getNumPartitions}")
+    dfReadNonPart.groupBy(spark_partition_id()).count().show(false)
+
+    // write back dfReadNonPart
+
+    val (_, timedWriteNonPartition) = timer2({
+      dfReadNonPart.write.mode("append")
+        .format("jdbc")
+        .option("url", url)
+        .option("dbtable", "KP_WRITE_TEST_NP")
+        .option("user", username)
+        .option("password", password)
+        .save()
+    }
+    )
+    println(s"WRITE.npart sec: $timedWriteNonPartition")
+
+    // write back dfReadPart
+
+    val (_, timedWritePartition) = timer2({
+      dfReadPart.write.mode("append")
+        .format("jdbc")
+        .option("url", url)
+        .option("dbtable", "KP_WRITE_TEST_P")
+        .option("user", username)
+        .option("password", password)
+        .save()
+    }
+    )
+    println(s"WRITE.part sec: $timedWritePartition")
+
+    Thread.sleep(60000)
+  }
+
+  test("largeDfWriteToDB2") {
+    val n = math.pow(2, 20).toInt
+    val df = makeLargeDf2(spark, n)
+    val config = ConfigFactory.load()
+    val driver = config.getString("jdbc.driver")
+    val url = config.getString("jdbc.url")
+    val username = config.getString("jdbc.username")
+    val password = config.getString("jdbc.password")
+
+    println(df.count)
+
+    val (_, t) = timer(
+    df.write.mode("append")
+      .format("jdbc")
+      .option("url", url)
+      .option("dbtable", "TARGET_FOR_SPARK_DF2")
+      .option("user", username)
+      .option("password", password)
+      .save())
+
+    println(t)
+  }
+
   test("readLargeDfFromDBandWriteToDB") {
-    val df = readLargeDfAndPartition(6)
+    val n = math.pow(2, 18).toInt
+    val df = makeLargeDf(spark, n)
+    val rowsWritten = df.count()
+    val numPartitions = df.rdd.getNumPartitions
 
     val config = ConfigFactory.load()
     val driver = config.getString("jdbc.driver")
@@ -211,10 +354,11 @@ class TestHelper extends  AnyFunSuite {
           .option("dbtable", "OTHER_TARGET_FOR_SPARK_DF")
           .option("user", username)
           .option("password", password)
-          .option("batchsize", v * 100000)
+          .option("batchsize", v * 10000)
+          .option("numPartitions", numPartitions)
           .save()
       }
-      println(v, e)
+      println(v, e, rowsWritten, numPartitions)
     })
   }
 
@@ -233,9 +377,18 @@ class TestHelper extends  AnyFunSuite {
       .option("password", password)
       .option("numPartitions", 12) // has no affect
       .load()
+      .repartition(16, col("dept_name"))
+
+    // above only has 1 partition without the .repartition
+    // 2 when param is 3, 4 when 8, 4 when 16
+
 
     val (a, b) = timer(
-      println("Rows: ", df.count(), df.rdd.getNumPartitions)
+      {
+        println("Rows: ", df.count(), df.rdd.getNumPartitions)
+        df.groupBy(spark_partition_id()).count().show(false)
+      }
+
     )
     println("Time:", b)
 
@@ -711,6 +864,50 @@ class TestHelper extends  AnyFunSuite {
     assert(df.where(expr2).count() == 1)
     val expr3 = expr.replaceAll(raw"('\s*\+\s*')", "' || '")
     assert(df.filter(expr3).count == 1)
+  }
+
+  test("except") {
+
+    val baseData = Seq((1, "a1", "b1"),(2,"a2","b2"),(3,"a3","b3")).toDF("ID", "colA", "colB")
+    val auditData = Seq(
+        (55,"UPDATE_PARKED","vyom_blah", 2,"a2+","b2+"),
+        (56, "UPDATE_PARKED","vyom_blah",2, "a2++", "b2++"),
+        (57, "UPDATE_PARKED","vyom_blah",5, "a2++", "b2++")
+    ).toDF("VYOM_ID", "VYOM_STATUS","VYOM_COMMENT","ID","colA","colB")
+
+
+    import org.apache.spark.sql.expressions.Window
+    val win = Window.partitionBy("ID").orderBy(col("VYOM_ID").desc)
+    val auditDataRankedByID = auditData.withColumn("rank", row_number().over(win)).where("rank == 1").drop("rank")
+
+    println("BASE_DATA")
+    baseData.show()
+    println("AUDIT_DATA")
+    auditData.show()
+    println("AUDIT_DATA_REDUCED_MOST_RECENT_PER_ID")
+    auditDataRankedByID.show()
+
+    val baseDataCols = baseData.columns.toSeq
+    val auditData2 = auditDataRankedByID.select(baseDataCols.head, baseDataCols.tail:_*)
+
+    def join = baseData.col("ID") === auditData2.col("ID")
+
+    val INbaseNOTInAudit = baseData.join(auditData2, join, "left_anti")
+
+    val cols = auditData2.columns.map(c => auditData2.col(c))
+    val INauditANDbase = auditData2.join(baseData, join, "inner").select(cols:_*)
+
+    println("BASE_DATA_THAT_HAS_NO_PARKED_UPDATES")
+    INbaseNOTInAudit.show()
+    println("BASE_DATA_WITH_PARKED_UPDATES")
+    INauditANDbase.show()
+
+    //final for mod
+    val finalDf = INauditANDbase.union(INbaseNOTInAudit)
+    println("FINAL_BASE_DATA_FOR_MODIFICATIONS_BY_NEW_RULE")
+    finalDf.show()
+
+
   }
 
 

@@ -1,7 +1,8 @@
 import com.typesafe.scalalogging.Logger
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{abs, asc, bround, col, concat, concat_ws, explode, lit, round, split, sum, to_date}
-import org.apache.spark.sql.types.{DataType, DoubleType, IntegerType, StringType}
+import org.apache.spark.sql.expressions.Window
+import org.apache.spark.sql.functions.{abs, asc, bround, col, concat, concat_ws, explode, lit, round, row_number, split, sum, to_date, typedLit, udf}
+import org.apache.spark.sql.types.{DataType, DateType, DoubleType, IntegerType, StringType, StructField, StructType, TimestampType}
 import org.scalatest.funsuite.AnyFunSuite
 import org.slf4j.LoggerFactory
 
@@ -368,6 +369,50 @@ class tests extends AnyFunSuite {
     df.show()
     rollups.printSchema()
     rollups.show()
+  }
+
+  test("dateFilterInRange") {
+
+    val data = Seq("20210421", "20210420","20210419","20210331","20210501")
+
+    val asofDate = "20210421"
+    def  asofDateFirstDay(s:String) = {
+      val (yyyymm, _) = s.splitAt(6)
+      s"${yyyymm}01"
+    }
+
+    val filterDate = (to_date(col("DT"),"yyyyMMdd") >= to_date(lit(asofDateFirstDay(asofDate)), "yyyyMMdd")) &&
+      (to_date(col("DT"),"yyyyMMdd") <= to_date(lit(asofDate),"yyyyMMdd"))
+
+    import sparkSession.implicits._
+    val df = data.toDF("DT").withColumn("DT", to_date(col("DT"),"yyyyMMdd"))
+
+    df.printSchema()
+    df.show()
+
+    val df2= df.filter(filterDate).withColumn("INDEX", row_number().over(Window.orderBy(col("DT").asc)
+    ))
+    df2.show()
+  }
+
+  test("translateValues") {
+    val data = Seq("20210421", "20210420","20210419","20210331","20210501")
+
+    import sparkSession.implicits._
+
+    val m = Map("20210421" -> "202x0421", "20210331"->"202x0331")
+    val translationMap = typedLit(m)
+    val getTranslationValue = udf( (x:String) => m.getOrElse(x, x))
+
+    val df = data.toDF("COL1")
+    df.show()
+
+    val df2 = df.withColumn("TR", translationMap(col("COL1")))
+    df2.show()
+
+    val df3 = df.withColumn("TR", getTranslationValue(col("COL1")))
+    df3.show()
+
   }
 
   test("pivotStyle") {
