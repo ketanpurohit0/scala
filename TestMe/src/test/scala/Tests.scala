@@ -38,7 +38,7 @@ class Tests extends AnyFunSuite{
 
   test("GetJsonSchemaForType") {
     val df = Helper.loadCSV(spark, resourceCsvPath)
-    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PointScored", "PhysioCalled","PointLet")
+    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PointScored", "PhysioCalled","PointLet", "CodeViolation", "TimeAnnouncement")
     val jsonSchemaMap = eventElemTypes.map(t => t -> Helper.getJsonSchemaForType(spark, df, "match_element", t))
 //    jsonSchemaMap.map(println)
 //    (MatchStatusUpdate,struct<eventElementType:string,matchStatus:struct<courtNum:bigint,firstServer:string,matchState:struct<locationTimestamp:string,state:string>,numSets:bigint,scoringType:string,teamAPlayer1:string,teamAPlayersDetails:struct<player1Country:string,player1Id:string>,teamBPlayer1:string,teamBPlayersDetails:struct<player1Country:string,player1Id:string>,tieBreakType:string,tossChooser:string,tossWinner:string,umpire:string,umpireCode:string,umpireCountry:string>,matchTime:string,seqNum:bigint,timestamp:string>)
@@ -47,21 +47,27 @@ class Tests extends AnyFunSuite{
 //    (PointScored,struct<details:struct<pointType:string,scoredBy:string>,eventElementType:string,matchTime:string,nextServer:struct<team:string>,score:struct<currentGameScore:struct<gameType:string,pointsA:string,pointsB:string>,currentSetScore:struct<gamesA:bigint,gamesB:bigint>,previousSetsScore:array<null>>,seqNum:bigint,server:struct<team:string>,timestamp:string>)
 //    (PhysioCalled,struct<eventElementType:string,matchTime:string,seqNum:bigint,team:string,timestamp:string>)
 //    (PointLet,struct<eventElementType:string,matchTime:string,nextServer:struct<team:string>,seqNum:bigint,server:struct<team:string>,timestamp:string>)
+//    (CodeViolation,struct<eventElementType:string,matchTime:string,playerId:bigint,reason:string,seqNum:bigint,team:string,timestamp:string>)
+//    (TimeAnnouncement,struct<eventElementType:string,matchTime:string,seqNum:bigint,time:string,timestamp:string>)
 
   }
 
   test("ConvertStringColToJson") {
     val m = Map[String,String]()
     val df = Helper.loadCSV(spark, resourceCsvPath)
-    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PhysioCalled","PointLet")
+    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PhysioCalled","PointLet", "CodeViolation","TimeAnnouncement")
     val jsonSchemasPerType = eventElemTypes.map(t => t -> Helper.getJsonSchemaForType(spark, df, "match_element", t))
 
 
-    val dfs = jsonSchemasPerType.map( schemaForType => schemaForType._1 -> df.filter(col("match_element").contains(schemaForType._1)).withColumn(s"tost_${schemaForType._1}", from_json(col("match_element"), schemaForType._2, m)))
+    val dfs = jsonSchemasPerType.map( schemaForType => schemaForType._1 -> df.filter(col("match_element").contains(schemaForType._1)).withColumn(s"match_element", from_json(col("match_element"), schemaForType._2, m)))
 
     dfs.foreach(d => println(d._2.columns.mkString("Array(", ", ", ")")))
 
-    dfs.foreach(d => d._2.select(col(s"tost_${d._1}.*")).show(5))
+    dfs.foreach(d => d._2.select(col(s"match_element.*")).show(5))
+
+    val commonCols = dfs.map(d => d._2.select(col(s"match_element.*")).columns).reduce(_ intersect _)
+    println(commonCols.mkString("Array(", ", ", ")"))
+
 //    dfs.foreach(d => {println(d._1); d._2.printSchema()})
 //    MatchStatusUpdate
 //    root
@@ -158,6 +164,34 @@ class Tests extends AnyFunSuite{
 //    |    |-- server: struct (nullable = true)
 //    |    |    |-- team: string (nullable = true)
 //    |    |-- timestamp: string (nullable = true)
+//
+//    CodeViolation
+//    root
+//    |-- _c0: string (nullable = true)
+//    |-- match_id: string (nullable = true)
+//    |-- message_id: string (nullable = true)
+//    |-- match_element: string (nullable = true)
+//    |-- tost_CodeViolation: struct (nullable = true)
+//    |    |-- eventElementType: string (nullable = true)
+//    |    |-- matchTime: string (nullable = true)
+//    |    |-- playerId: long (nullable = true)
+//    |    |-- reason: string (nullable = true)
+//    |    |-- seqNum: long (nullable = true)
+//    |    |-- team: string (nullable = true)
+//    |    |-- timestamp: string (nullable = true)
+//
+//    TimeAnnouncement
+//    root
+//    |-- _c0: string (nullable = true)
+//    |-- match_id: string (nullable = true)
+//    |-- message_id: string (nullable = true)
+//    |-- match_element: struct (nullable = true)
+//    |    |-- eventElementType: string (nullable = true)
+//    |    |-- matchTime: string (nullable = true)
+//    |    |-- seqNum: long (nullable = true)
+//    |    |-- time: string (nullable = true)
+//    |    |-- timestamp: string (nullable = true)
+//
 
   }
 
