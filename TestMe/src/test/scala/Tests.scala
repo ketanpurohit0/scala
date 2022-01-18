@@ -36,25 +36,40 @@ class Tests extends AnyFunSuite{
 
       }
 
+  test("GetJsonSchemaForType") {
+    val df = Helper.loadCSV(spark, resourceCsvPath)
+    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PointScored", "PhysioCalled","PointLet")
+    val jsonSchemaMap = eventElemTypes.map(t => t -> Helper.getJsonSchemaForType(spark, df, "match_element", t))
+//    jsonSchemaMap.map(println)
+//    (MatchStatusUpdate,struct<eventElementType:string,matchStatus:struct<courtNum:bigint,firstServer:string,matchState:struct<locationTimestamp:string,state:string>,numSets:bigint,scoringType:string,teamAPlayer1:string,teamAPlayersDetails:struct<player1Country:string,player1Id:string>,teamBPlayer1:string,teamBPlayersDetails:struct<player1Country:string,player1Id:string>,tieBreakType:string,tossChooser:string,tossWinner:string,umpire:string,umpireCode:string,umpireCountry:string>,matchTime:string,seqNum:bigint,timestamp:string>)
+//    (PointStarted,struct<eventElementType:string,matchTime:string,nextServer:struct<team:string>,seqNum:bigint,server:struct<team:string>,timestamp:string>)
+//    (PointFault,struct<eventElementType:string,faultType:string,matchTime:string,nextServer:struct<team:string>,seqNum:bigint,server:struct<team:string>,timestamp:string>)
+//    (PointScored,struct<details:struct<pointType:string,scoredBy:string>,eventElementType:string,matchTime:string,nextServer:struct<team:string>,score:struct<currentGameScore:struct<gameType:string,pointsA:string,pointsB:string>,currentSetScore:struct<gamesA:bigint,gamesB:bigint>,previousSetsScore:array<null>>,seqNum:bigint,server:struct<team:string>,timestamp:string>)
+//    (PhysioCalled,struct<eventElementType:string,matchTime:string,seqNum:bigint,team:string,timestamp:string>)
+//    (PointLet,struct<eventElementType:string,matchTime:string,nextServer:struct<team:string>,seqNum:bigint,server:struct<team:string>,timestamp:string>)
+
+  }
+
   test("ConvertStringColToJson") {
     val m = Map[String,String]()
     val df = Helper.loadCSV(spark, resourceCsvPath)
-    val jsonSample = df.filter(col("match_element").contains("MatchStatusUpdate")).select("match_element").collect()
-    val sampleJson = jsonSample(0).getString(0)
-    val schemaJson = spark.range(1)
-      .select(schema_of_json(lit(sampleJson)))
-      .collect()(0).getString(0)
+    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PhysioCalled","PointLet")
+    val jsonSchemasPerType = eventElemTypes.map(t => t -> Helper.getJsonSchemaForType(spark, df, "match_element", t))
 
-//    print(schemaJson)
-//    struct<eventElementType:string,matchStatus:struct<courtNum:bigint,firstServer:string,matchState:struct<locationTimestamp:string,state:string>,numSets:bigint,scoringType:string,teamAPlayer1:string,teamAPlayersDetails:struct<player1Country:string,player1Id:string>,teamBPlayer1:string,teamBPlayersDetails:struct<player1Country:string,player1Id:string>,tieBreakType:string,tossChooser:string,tossWinner:string,umpire:string,umpireCode:string,umpireCountry:string>,matchTime:string,seqNum:bigint,timestamp:string>
 
-    val df2 = df.withColumn("structFromJson", from_json(col("match_element"), schemaJson, m))
-//    df2.printSchema()
+    val dfs = jsonSchemasPerType.map( schemaForType => schemaForType._1 -> df.filter(col("match_element").contains(schemaForType._1)).withColumn(s"tost_${schemaForType._1}", from_json(col("match_element"), schemaForType._2, m)))
+
+    dfs.foreach(d => println(d._2.columns.mkString("Array(", ", ", ")")))
+
+    dfs.foreach(d => d._2.select(col(s"tost_${d._1}.*")).show(5))
+//    dfs.foreach(d => {println(d._1); d._2.printSchema()})
+//    MatchStatusUpdate
+//    root
 //    |-- _c0: string (nullable = true)
 //    |-- match_id: string (nullable = true)
 //    |-- message_id: string (nullable = true)
 //    |-- match_element: string (nullable = true)
-//    |-- structFromJson: struct (nullable = true)
+//    |-- tost_MatchStatusUpdate: struct (nullable = true)
 //    |    |-- eventElementType: string (nullable = true)
 //    |    |-- matchStatus: struct (nullable = true)
 //    |    |    |-- courtNum: long (nullable = true)
@@ -81,8 +96,69 @@ class Tests extends AnyFunSuite{
 //    |    |-- matchTime: string (nullable = true)
 //    |    |-- seqNum: long (nullable = true)
 //    |    |-- timestamp: string (nullable = true)
-    df2.select("structFromJson.eventElementType", "structFromJson.matchStatus.matchState.state").show()
-    df2.select("structFromJson.*").show()
+//
+//    PointStarted
+//    root
+//    |-- _c0: string (nullable = true)
+//    |-- match_id: string (nullable = true)
+//    |-- message_id: string (nullable = true)
+//    |-- match_element: string (nullable = true)
+//    |-- tost_PointStarted: struct (nullable = true)
+//    |    |-- eventElementType: string (nullable = true)
+//    |    |-- matchTime: string (nullable = true)
+//    |    |-- nextServer: struct (nullable = true)
+//    |    |    |-- team: string (nullable = true)
+//    |    |-- seqNum: long (nullable = true)
+//    |    |-- server: struct (nullable = true)
+//    |    |    |-- team: string (nullable = true)
+//    |    |-- timestamp: string (nullable = true)
+//
+//    PointFault
+//    root
+//    |-- _c0: string (nullable = true)
+//    |-- match_id: string (nullable = true)
+//    |-- message_id: string (nullable = true)
+//    |-- match_element: string (nullable = true)
+//    |-- tost_PointFault: struct (nullable = true)
+//    |    |-- eventElementType: string (nullable = true)
+//    |    |-- faultType: string (nullable = true)
+//    |    |-- matchTime: string (nullable = true)
+//    |    |-- nextServer: struct (nullable = true)
+//    |    |    |-- team: string (nullable = true)
+//    |    |-- seqNum: long (nullable = true)
+//    |    |-- server: struct (nullable = true)
+//    |    |    |-- team: string (nullable = true)
+//    |    |-- timestamp: string (nullable = true)
+//
+//    PhysioCalled
+//    root
+//    |-- _c0: string (nullable = true)
+//    |-- match_id: string (nullable = true)
+//    |-- message_id: string (nullable = true)
+//    |-- match_element: string (nullable = true)
+//    |-- tost_PhysioCalled: struct (nullable = true)
+//    |    |-- eventElementType: string (nullable = true)
+//    |    |-- matchTime: string (nullable = true)
+//    |    |-- seqNum: long (nullable = true)
+//    |    |-- team: string (nullable = true)
+//    |    |-- timestamp: string (nullable = true)
+//
+//    PointLet
+//    root
+//    |-- _c0: string (nullable = true)
+//    |-- match_id: string (nullable = true)
+//    |-- message_id: string (nullable = true)
+//    |-- match_element: string (nullable = true)
+//    |-- tost_PointLet: struct (nullable = true)
+//    |    |-- eventElementType: string (nullable = true)
+//    |    |-- matchTime: string (nullable = true)
+//    |    |-- nextServer: struct (nullable = true)
+//    |    |    |-- team: string (nullable = true)
+//    |    |-- seqNum: long (nullable = true)
+//    |    |-- server: struct (nullable = true)
+//    |    |    |-- team: string (nullable = true)
+//    |    |-- timestamp: string (nullable = true)
+
   }
 
 
