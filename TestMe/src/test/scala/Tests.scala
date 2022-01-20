@@ -1,7 +1,7 @@
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.expressions.Window
 import org.scalatest.funsuite.AnyFunSuite
-import org.apache.spark.sql.functions.{col, explode, from_json, get_json_object, lag, lead, lit, schema_of_json, to_json}
+import org.apache.spark.sql.functions.{col, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, to_json}
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite{
 
@@ -148,15 +148,17 @@ class Tests extends AnyFunSuite{
     val json_schema = Helper.getJsonSchema(spark, df, "match_element")
     val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
     val window = Window.partitionBy("match_id").orderBy("match_element.seqNum")
-    val columnsOfInterest = Seq("match_element.seqNum", "match_element.eventElementType","match_element.details.scoredBy")
-    val lead_columns = columnsOfInterest.map( c => lead(c,1).over(window).as(c))
+    val columnsOfInterest = Seq("match_element.server.team", "match_element.seqNum", "match_element.eventElementType","match_element.details.scoredBy")
     def lead_lag_columns(f : (String, Int) => Column, prefix: String) = {
       columnsOfInterest.map(c => f(c, 1).over(window).as(prefix+c))
     }
-    val lag_col = lag("match_element.seqNum", 1).over(window).as("match_element.seqNum")
     val all_cols = lead_lag_columns(lag, "LAG_") ++ Seq(col("*")) ++ lead_lag_columns(lead, "LEAD_")
-    df2.select(all_cols:_*).show(10)
+    val df3 = df2.select(all_cols:_*).filter("match_element.eventElementType = 'PointStarted'")
+      .withColumn("match_element", row_number().over(window))
+      .withColumnRenamed("match_element","serveid")
+      .drop("_c0")
 
+    df3.show(5)
   }
 
   test("ConvertStringColToJson") {
