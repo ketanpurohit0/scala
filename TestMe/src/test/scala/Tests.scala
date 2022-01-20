@@ -319,5 +319,39 @@ class Tests extends AnyFunSuite{
 
   }
 
+  test("pivotAndFill") {
+    val data = Seq(
+      ("EventA",2),
+      ("EventA",3),
+      ("EventB",4),
+      ("EventC",5)
+    )
+
+    val df = data.toDF("Event","ID")
+    df.show()
+
+    val pivotDf = df.groupBy("ID").pivot(col("Event")).agg(lit(1))
+    val pivotDf_Filled = pivotDf.na.fill(0)
+    pivotDf_Filled.show()
+
+    val pivotDf2 = df.groupBy("ID").pivot(col("Event"),Seq("EventA","EventB")).agg(lit(1))
+    val pivotDf2_Filled = pivotDf2.na.fill(0)
+    pivotDf2_Filled.show()
+
+  }
+
+  test("oneHotEncode") {
+      val data = Seq(
+        ("EventA",2),
+        ("EventA",3),
+        ("EventB",4),
+        ("EventC",5)
+      )
+
+      val df = data.toDF("Event","ID")
+      df.show()
+
+    }
+
 
 }
