@@ -1,7 +1,7 @@
 import org.apache.spark.sql.Column
 import org.apache.spark.sql.expressions.Window
 import org.scalatest.funsuite.AnyFunSuite
-import org.apache.spark.sql.functions.{col, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, to_json}
+import org.apache.spark.sql.functions.{col, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, to_json, when}
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite{
 
@@ -148,17 +148,32 @@ class Tests extends AnyFunSuite{
     val json_schema = Helper.getJsonSchema(spark, df, "match_element")
     val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
     val window = Window.partitionBy("match_id").orderBy("match_element.seqNum")
-    val columnsOfInterest = Seq("match_element.server.team", "match_element.seqNum", "match_element.eventElementType","match_element.details.scoredBy")
+    val columnsOfInterest = Seq("match_element.seqNum", "match_element.eventElementType","match_element.details.scoredBy")
     def lead_lag_columns(f : (String, Int) => Column, prefix: String) = {
       columnsOfInterest.map(c => f(c, 1).over(window).as(prefix+c))
     }
-    val all_cols = lead_lag_columns(lag, "LAG_") ++ Seq(col("*")) ++ lead_lag_columns(lead, "LEAD_")
+    val all_cols = Seq(col("match_element.server.team").as("serving_team")) ++ lead_lag_columns(lag, "LAG_") ++ Seq(col("*")) ++ lead_lag_columns(lead, "LEAD_")
     val df3 = df2.select(all_cols:_*).filter("match_element.eventElementType = 'PointStarted'")
-      .withColumn("match_element", row_number().over(window))
-      .withColumnRenamed("match_element","serveid")
+      .withColumn("serveid", row_number().over(window))
+      .withColumn("server", when(col("serving_team") ==="TeamA",col("match_element.matchStatus.teamAPlayer1"))
+      .otherwise(col("match_element.matchStatus.teamBPlayer1")))
       .drop("_c0")
 
+    val dfMatchPlayers = df2
+                         .filter("match_element.eventElementType = 'MatchStatusUpdate' and match_element.matchStatus.matchState.state = 'PlayersArriveOnCourt'")
+                         .select("match_id","match_element.matchStatus.teamAPlayer1","match_element.matchStatus.teamBPlayer1")
+
+    val joinCondition = (df3("match_id") === dfMatchPlayers("match_id"))
+    val df4 = df3.join(dfMatchPlayers,joinCondition,"inner")
+                 .select(df3("*"), dfMatchPlayers("teamAPlayer1"),dfMatchPlayers("teamBPlayer1"))
+                 .withColumn("server", when(col("serving_team") === "TeamB", col("teamBPlayer1")).otherwise(col("teamAPlayer1")))
+                 .drop(Seq("teamBPlayer1","teamAPlayer1"):_*)
+
+
+
     df3.show(5)
+    dfMatchPlayers.show(5)
+    df4.show(35)
   }
 
   test("ConvertStringColToJson") {
