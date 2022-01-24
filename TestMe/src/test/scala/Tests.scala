@@ -13,7 +13,7 @@ class Tests extends AnyFunSuite{
 
   test("TestSparkSession") {
     //val spark = Helper.getSparkSession("local[*]", "test")
-    // spark.conf.getAll.foreach( c => println(c._1, ":=", c._2))
+    spark.conf.getAll.foreach( c => println(c._1, ":=", c._2))
     assert(spark.conf.getAll.isEmpty == false)
   }
 
@@ -175,13 +175,15 @@ class Tests extends AnyFunSuite{
 
 //    df3.show(5)
 //    dfMatchPlayers.show(5)
-    df4.printSchema()
+//    df4.printSchema()
 //    df4.show(35)
 
     // Now pivot on LAG_match_element_eventElementType
     val prePivotDf = df4.groupBy("match_id", "message_id").pivot("LAG_match_element_eventElementType",Seq("PhysioCalled")).agg(lit(1))
         .withColumn("message_id",col("message_id").cast("int"))
         .withColumn("match_id", col("match_id").cast("int"))
+      .withColumnRenamed("match_id", "pre_match_id")
+      .withColumnRenamed("message_id", "pre_message_id")
 
     // Now pivot on LEAD_match_element_details_scoredBy
     val leadPivotDf = df4.groupBy("match_id", "message_id").pivot("LEAD_match_element_eventElementType", Seq("PointFault","PointLet","TeamA scored","TeamB scored")).agg(lit(1))
@@ -192,22 +194,25 @@ class Tests extends AnyFunSuite{
 //    prePivotDf.show()
 //    leadPivotDf.show()
 
-    // bring it ALL together as per requirement, the following is the final result
 
-    leadPivotDf.printSchema()
-    prePivotDf.printSchema()
+//    leadPivotDf.printSchema()
+//    prePivotDf.printSchema()
 
-    def joinC1 = prePivotDf.col("message_id").as("X") === leadPivotDf.col("message_id") && (prePivotDf.col("match_id").as("C") === leadPivotDf.col("match_id").as("FF"))
+    def joinC1 = prePivotDf.col("pre_message_id") === leadPivotDf.col("message_id") && (prePivotDf.col("pre_match_id") === leadPivotDf.col("match_id"))
     def joinC(left:DataFrame, right:DataFrame) = col("left.message_id") === col("right.message_id") && (col("left.match_id") === col("right.match_id"))
 
 
-    val resultDf = prePivotDf
+    val resultDfPartial = prePivotDf
       .join(leadPivotDf, joinC1)
-//      .join(df4, joinC())
-//      .select("server","PhysioCalled", "serveid","PointFault","PointLet","TeamA scored","TeamB scored")
-      //.na.fill(0)
 
-      resultDf.orderBy(col("message_id")).show(1000)
+    val resultDf = resultDfPartial
+      .join(df4, resultDfPartial.col("pre_message_id") === df4.col("message_id") && (resultDfPartial.col("pre_match_id") === df4.col("match_id")))
+      .select(col("server"),col("PhysioCalled"), col("serveid"), col("PointFault"),col("PointLet"),col("TeamA scored"),col("TeamB scored"), df4.col("match_id"),df4.col("message_id"))
+      .na.fill(0)
+
+    // bring it ALL together as per requirement, the following is the final result
+
+    resultDf
   }
 
   test("ConvertStringColToJson") {
