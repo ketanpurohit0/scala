@@ -1,5 +1,5 @@
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{col, concat, from_json, lag, lead, lit, row_number, schema_of_json, when}
+import org.apache.spark.sql.functions.{col, concat, from_json, lag, lead, lit, row_number, schema_of_json, sum, when}
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
@@ -229,6 +229,28 @@ object Helper {
     // If the previous ooutcome was PointFault then current point is a SecondServe
     resultDf.withColumn("SecondServe", lag("PointFault",1).over(w))
       .select(cols_selectionOrder.head, cols_selectionOrder.tail:_*)
+
+  }
+
+  def RND(spark: SparkSession, resourceCsvPath: String): DataFrame = {
+    val m = Map[String,String]()
+    val df = Helper.loadCSV(spark, resourceCsvPath)
+    val json_schema = Helper.getJsonSchema(spark, df, "match_element")
+    val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
+      .withColumn("message_id", col("message_id").cast("int"))
+
+    val w = Window.partitionBy("match_id")
+      .orderBy(col("message_id"))
+      .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+
+    val dfEnrichWithCuSumAces = df2
+      .withColumn("IsAce", when(col("match_element.details.pointType") === "Ace",lit(1)).otherwise(lit(0)))
+      .withColumn("TotalMatchAces", sum(col("IsAce")).over(w))
+      .drop("IsAce")
+    //   df3.printSchema()
+    //df3.select("match_id", "message_id","TotalMatchAces").show(1000)
+
+    dfEnrichWithCuSumAces
 
   }
 

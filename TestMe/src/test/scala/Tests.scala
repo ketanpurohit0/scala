@@ -1,7 +1,7 @@
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.expressions.Window
 import org.scalatest.funsuite.AnyFunSuite
-import org.apache.spark.sql.functions.{col, concat, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, sum, to_json, when}
+import org.apache.spark.sql.functions.{array, arrays_zip, col, concat, explode, expr, from_json, get_json_object, lag, lead, length, lit, row_number, schema_of_json, size, sum, to_json, when}
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite{
 
@@ -76,11 +76,23 @@ class Tests extends AnyFunSuite{
     val df = Helper.loadCSV(spark, resourceCsvPath)
     val json_schema = Helper.getJsonSchema(spark, df, "match_element")
     val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
-    df2
+    val df3 = df2
       .select("match_id", "message_id","match_element.score.previousSetsScore", "match_element.score.overallSetScore")
-      .filter(col("previousSetsScore").isNotNull)
-      .withColumn("A_S", col("previousSetsScore.gamesA"))
-      .show(100, false)
+      //.drop("previousSetsScore.element.tieBreakScore")
+      //.withColumn("previousSetsScore", when(col("previousSetsScore").isNull, array().cast("array<integer>")).otherwise(col("previousSetsScore")) )     //.filter(col("previousSetsScore").isNotNull)
+      //.withColumn("A_S", col("previousSetsScore.gamesA"))
+      //.withColumn("L_AS", size(col("A_S")))
+      //.withColumn("E_AS", explode(arrays_zip(col("previousSetsScore.gamesA"), col("previousSetsScore.gamesB"))))
+      .withColumn("A_WINS", size(expr("filter(previousSetsScore,  x -> x.gamesA > x.gamesB)")))
+      .withColumn("B_WINS", size(expr("filter(previousSetsScore,  x -> x.gamesA < x.gamesB)")))
+      .withColumn("A_WINS",when(col("A_WINS") < 0, 0).otherwise(col("A_WINS")))
+      .withColumn("B_WINS",when(col("B_WINS") < 0, 0).otherwise(col("B_WINS")))
+      .withColumn("overallSetScore", array("A_WINS","B_WINS"))
+      .drop(Seq("A_WINS","B_WINS"):_*)
+
+
+    df3.printSchema()
+    df3.show(1000, false)
 //      .selectExpr("aggregate(previousSetsScore, 0, (x.gamesA, y.gamesB) -> x + y) as details_sum")
 //      .printSchema()
 //      .withColumn("x", col("match_element.score.previousSetsScore"))
@@ -89,22 +101,9 @@ class Tests extends AnyFunSuite{
 
   test("R&D") {
     // add a cumulative number of Aces in the match (regardless of who served the ace)
-    val m = Map[String,String]()
-    val df = Helper.loadCSV(spark, resourceCsvPath)
-    val json_schema = Helper.getJsonSchema(spark, df, "match_element")
-    val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
-                .withColumn("message_id", col("message_id").cast("int"))
-
-    val w = Window.partitionBy("match_id")
-                  .orderBy(col("message_id"))
-                  .rowsBetween(Window.unboundedPreceding, Window.currentRow)
-
-    val df3 = df2
-              .withColumn("IsAce", when(col("match_element.details.pointType") === "Ace",lit(1)).otherwise(lit(0)))
-              .withColumn("TotalMatchAces", sum($"IsAce").over(w))
-              .drop("IsAce")
-//   df3.printSchema()
-      df3.select("match_id", "message_id","TotalMatchAces").show(1000)
+    val rndDf = Helper.RND(spark, resourceCsvPath)
+       rndDf.printSchema()
+       rndDf.select("match_id", "message_id","TotalMatchAces").show(1000)
   }
 
   test("ConvertStringColToJson") {
