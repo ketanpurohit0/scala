@@ -75,7 +75,7 @@ class Tests extends AnyFunSuite{
     val resultDf = Helper.transformation(spark, resourceCsvPath)
 
     resultDf.printSchema()
-    resultDf.filter("match_element.eventElementType == 'PointScored'").select("message_id", "match_element.score.overallSetScore" ).show(1000, false)
+    resultDf.filter("match_element.eventElementType == 'PointScored'").select("message_id", "fixedOverallScore","match_element.score.overallSetScore" ).show(1000, false)
   }
 
   test("R&D") {

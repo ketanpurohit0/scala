@@ -244,7 +244,7 @@ object Helper {
       .withColumn("A_WINS",when(col("A_WINS") < 0, 0).otherwise(col("A_WINS")))
       .withColumn("B_WINS",when(col("B_WINS") < 0, 0).otherwise(col("B_WINS")))
       // now put the fixed value in a new column
-      .withColumn("match_element.score.overallSetScore", struct(col("A_WINS").as("setsA"),col("B_WINS").as("setsB")))
+      .withColumn("fixedOverallScore", struct(col("A_WINS").as("setsA"),col("B_WINS").as("setsB")))
       .drop(Seq("A_WINS","B_WINS"):_*)
 
     df3
