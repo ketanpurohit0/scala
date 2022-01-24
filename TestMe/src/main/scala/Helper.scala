@@ -1,5 +1,5 @@
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.functions.{col, concat, from_json, lag, lead, lit, row_number, schema_of_json, sum, when}
+import org.apache.spark.sql.functions.{array, col, concat, expr, from_json, lag, lead, lit, row_number, schema_of_json, size, struct, sum, when}
 import org.apache.spark.sql.types.{StructField, StructType}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{Column, DataFrame, SparkSession}
@@ -230,6 +230,24 @@ object Helper {
     resultDf.withColumn("SecondServe", lag("PointFault",1).over(w))
       .select(cols_selectionOrder.head, cols_selectionOrder.tail:_*)
 
+  }
+
+  def transformation(spark: SparkSession, resourceCsvPath: String): DataFrame = {
+    val m = Map[String,String]()
+    val df = Helper.loadCSV(spark, resourceCsvPath)
+    val json_schema = Helper.getJsonSchema(spark, df, "match_element")
+    val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
+    val df3 = df2
+      .withColumn("A_WINS", size(expr("filter(match_element.score.previousSetsScore,  x -> x.gamesA > x.gamesB)")))
+      .withColumn("B_WINS", size(expr("filter(match_element.score.previousSetsScore,  x -> x.gamesA < x.gamesB)")))
+      // deal with nulls in previosSetsScore
+      .withColumn("A_WINS",when(col("A_WINS") < 0, 0).otherwise(col("A_WINS")))
+      .withColumn("B_WINS",when(col("B_WINS") < 0, 0).otherwise(col("B_WINS")))
+      // now put the fixed value in a new column
+      .withColumn("match_element.score.overallSetScore", struct(col("A_WINS").as("setsA"),col("B_WINS").as("setsB")))
+      .drop(Seq("A_WINS","B_WINS"):_*)
+
+    df3
   }
 
   def RND(spark: SparkSession, resourceCsvPath: String): DataFrame = {

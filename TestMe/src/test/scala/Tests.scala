@@ -72,31 +72,10 @@ class Tests extends AnyFunSuite{
   }
 
   test("Transformation") {
-    val m = Map[String,String]()
-    val df = Helper.loadCSV(spark, resourceCsvPath)
-    val json_schema = Helper.getJsonSchema(spark, df, "match_element")
-    val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
-    val df3 = df2
-      .select("match_id", "message_id","match_element.score.previousSetsScore", "match_element.score.overallSetScore")
-      //.drop("previousSetsScore.element.tieBreakScore")
-      //.withColumn("previousSetsScore", when(col("previousSetsScore").isNull, array().cast("array<integer>")).otherwise(col("previousSetsScore")) )     //.filter(col("previousSetsScore").isNotNull)
-      //.withColumn("A_S", col("previousSetsScore.gamesA"))
-      //.withColumn("L_AS", size(col("A_S")))
-      //.withColumn("E_AS", explode(arrays_zip(col("previousSetsScore.gamesA"), col("previousSetsScore.gamesB"))))
-      .withColumn("A_WINS", size(expr("filter(previousSetsScore,  x -> x.gamesA > x.gamesB)")))
-      .withColumn("B_WINS", size(expr("filter(previousSetsScore,  x -> x.gamesA < x.gamesB)")))
-      .withColumn("A_WINS",when(col("A_WINS") < 0, 0).otherwise(col("A_WINS")))
-      .withColumn("B_WINS",when(col("B_WINS") < 0, 0).otherwise(col("B_WINS")))
-      .withColumn("overallSetScore", array("A_WINS","B_WINS"))
-      .drop(Seq("A_WINS","B_WINS"):_*)
+    val resultDf = Helper.transformation(spark, resourceCsvPath)
 
-
-    df3.printSchema()
-    df3.show(1000, false)
-//      .selectExpr("aggregate(previousSetsScore, 0, (x.gamesA, y.gamesB) -> x + y) as details_sum")
-//      .printSchema()
-//      .withColumn("x", col("match_element.score.previousSetsScore"))
-//      .show(100, false)
+    resultDf.printSchema()
+    resultDf.filter("match_element.eventElementType == 'PointScored'").select("message_id", "match_element.score.overallSetScore" ).show(1000, false)
   }
 
   test("R&D") {
