@@ -1,7 +1,7 @@
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.expressions.Window
 import org.scalatest.funsuite.AnyFunSuite
-import org.apache.spark.sql.functions.{col, concat, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, to_json, when}
+import org.apache.spark.sql.functions.{col, concat, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, sum, to_json, when}
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite{
 
@@ -77,13 +77,34 @@ class Tests extends AnyFunSuite{
     val json_schema = Helper.getJsonSchema(spark, df, "match_element")
     val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
     df2
-      .select("match_element.score.previousSetsScore", "match_element.score.overallSetScore")
+      .select("match_id", "message_id","match_element.score.previousSetsScore", "match_element.score.overallSetScore")
       .filter(col("previousSetsScore").isNotNull)
-      .withColumn("FOO", explode(col("previousSetsScore"))).printSchema()
+      .withColumn("A_S", col("previousSetsScore.gamesA"))
+      .show(100, false)
 //      .selectExpr("aggregate(previousSetsScore, 0, (x.gamesA, y.gamesB) -> x + y) as details_sum")
 //      .printSchema()
 //      .withColumn("x", col("match_element.score.previousSetsScore"))
 //      .show(100, false)
+  }
+
+  test("R&D") {
+    // add a cumulative number of Aces in the match (regardless of who served the ace)
+    val m = Map[String,String]()
+    val df = Helper.loadCSV(spark, resourceCsvPath)
+    val json_schema = Helper.getJsonSchema(spark, df, "match_element")
+    val df2 = df.withColumn("match_element", from_json(col("match_element"), json_schema, m))
+                .withColumn("message_id", col("message_id").cast("int"))
+
+    val w = Window.partitionBy("match_id")
+                  .orderBy(col("message_id"))
+                  .rowsBetween(Window.unboundedPreceding, Window.currentRow)
+
+    val df3 = df2
+              .withColumn("IsAce", when(col("match_element.details.pointType") === "Ace",lit(1)).otherwise(lit(0)))
+              .withColumn("TotalMatchAces", sum($"IsAce").over(w))
+              .drop("IsAce")
+//   df3.printSchema()
+      df3.select("match_id", "message_id","TotalMatchAces").show(1000)
   }
 
   test("ConvertStringColToJson") {
