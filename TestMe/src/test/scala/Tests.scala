@@ -1,7 +1,7 @@
-import org.apache.spark.sql.Column
+import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.expressions.Window
 import org.scalatest.funsuite.AnyFunSuite
-import org.apache.spark.sql.functions.{col, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, to_json, when}
+import org.apache.spark.sql.functions.{col, concat, explode, from_json, get_json_object, lag, lead, lit, row_number, schema_of_json, to_json, when}
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite{
 
@@ -142,7 +142,7 @@ class Tests extends AnyFunSuite{
 
   }
 
-  test("LeadAndLagOverStruct") {
+  test("Requirement_Clean_&_flatten_the_data") {
     val m = Map[String,String]()
     val df = Helper.loadCSV(spark, resourceCsvPath)
     val json_schema = Helper.getJsonSchema(spark, df, "match_element")
@@ -150,7 +150,7 @@ class Tests extends AnyFunSuite{
     val window = Window.partitionBy("match_id").orderBy("match_element.seqNum")
     val columnsOfInterest = Seq("match_element.seqNum", "match_element.eventElementType","match_element.details.scoredBy")
     def lead_lag_columns(f : (String, Int) => Column, prefix: String) = {
-      columnsOfInterest.map(c => f(c, 1).over(window).as(prefix+c))
+      columnsOfInterest.map(c => f(c, 1).over(window).as(prefix+c.replace(".","_")))
     }
     val all_cols = Seq(col("match_element.server.team").as("serving_team")) ++ lead_lag_columns(lag, "LAG_") ++ Seq(col("*")) ++ lead_lag_columns(lead, "LEAD_")
     val df3 = df2.select(all_cols:_*).filter("match_element.eventElementType = 'PointStarted'")
@@ -168,12 +168,46 @@ class Tests extends AnyFunSuite{
                  .select(df3("*"), dfMatchPlayers("teamAPlayer1"),dfMatchPlayers("teamBPlayer1"))
                  .withColumn("server", when(col("serving_team") === "TeamB", col("teamBPlayer1")).otherwise(col("teamAPlayer1")))
                  .drop(Seq("teamBPlayer1","teamAPlayer1"):_*)
+                 .withColumn("LEAD_match_element_eventElementType", when(col("LEAD_match_element_eventElementType") === "PointScored",concat(col("LEAD_match_element_details_scoredBy"),lit(" scored"))).otherwise(col("LEAD_match_element_eventElementType")))
+                 .withColumn("message_id", col("message_id").cast("int"))
 
 
 
-    df3.show(5)
-    dfMatchPlayers.show(5)
-    df4.show(35)
+//    df3.show(5)
+//    dfMatchPlayers.show(5)
+    df4.printSchema()
+//    df4.show(35)
+
+    // Now pivot on LAG_match_element_eventElementType
+    val prePivotDf = df4.groupBy("match_id", "message_id").pivot("LAG_match_element_eventElementType",Seq("PhysioCalled")).agg(lit(1))
+        .withColumn("message_id",col("message_id").cast("int"))
+        .withColumn("match_id", col("match_id").cast("int"))
+
+    // Now pivot on LEAD_match_element_details_scoredBy
+    val leadPivotDf = df4.groupBy("match_id", "message_id").pivot("LEAD_match_element_eventElementType", Seq("PointFault","PointLet","TeamA scored","TeamB scored")).agg(lit(1))
+        .withColumn("message_id",col("message_id").cast("int"))
+      .withColumn("match_id",col("match_id").cast("int"))
+      //.withColumnRenamed("message_id","_mid")
+
+//    prePivotDf.show()
+//    leadPivotDf.show()
+
+    // bring it ALL together as per requirement, the following is the final result
+
+    leadPivotDf.printSchema()
+    prePivotDf.printSchema()
+
+    def joinC1 = prePivotDf.col("message_id").as("X") === leadPivotDf.col("message_id") && (prePivotDf.col("match_id").as("C") === leadPivotDf.col("match_id").as("FF"))
+    def joinC(left:DataFrame, right:DataFrame) = col("left.message_id") === col("right.message_id") && (col("left.match_id") === col("right.match_id"))
+
+
+    val resultDf = prePivotDf
+      .join(leadPivotDf, joinC1)
+//      .join(df4, joinC())
+//      .select("server","PhysioCalled", "serveid","PointFault","PointLet","TeamA scored","TeamB scored")
+      //.na.fill(0)
+
+      resultDf.orderBy(col("message_id")).show(1000)
   }
 
   test("ConvertStringColToJson") {
@@ -321,22 +355,30 @@ class Tests extends AnyFunSuite{
 
   test("pivotAndFill") {
     val data = Seq(
-      ("EventA",2),
-      ("EventA",3),
-      ("EventB",4),
-      ("EventC",5)
+      ("EventA",2, "EventA","Event1"),
+      ("EventA",3, "EventB","Event3"),
+      ("EventB",4, "EventC","Event2"),
+      ("EventC",5, "EventD","Event4")
     )
 
-    val df = data.toDF("Event","ID")
+    val df = data.toDF("State","ID","PriorState","OutComeState")
     df.show()
 
-    val pivotDf = df.groupBy("ID").pivot(col("Event")).agg(lit(1))
-    val pivotDf_Filled = pivotDf.na.fill(0)
-    pivotDf_Filled.show()
+//    val pivotDf = df.groupBy("ID").pivot(col("State")).agg(lit(1))
+//    val pivotDf_Filled = pivotDf.na.fill(0)
+//    pivotDf_Filled.show()
+//
+//    val pivotDf2 = df.groupBy("ID").pivot(col("State"),Seq("EventA","EventB")).agg(lit(1))
+//    val pivotDf2_Filled = pivotDf2.na.fill(0)
+//    pivotDf2_Filled.show()
 
-    val pivotDf2 = df.groupBy("ID").pivot(col("Event"),Seq("EventA","EventB")).agg(lit(1))
-    val pivotDf2_Filled = pivotDf2.na.fill(0)
-    pivotDf2_Filled.show()
+    val pivotedToPre = df.groupBy("ID").pivot("PriorState").agg(lit(1))
+    pivotedToPre.show()
+
+    val pivotedToOutcome =  df.groupBy("ID").pivot("OutComeState").agg(lit(1))
+    pivotedToOutcome.show()
+
+
 
   }
 
