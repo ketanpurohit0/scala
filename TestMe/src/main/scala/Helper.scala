@@ -226,9 +226,10 @@ object Helper {
     val resultDf = Helper.cleanAndFlatten(spark, resourceCsvPath)
     val cols_selectionOrder = Seq("server", "PhysioCalled", "SecondServe","serveid","PointFault","PointLet","TeamA scored","TeamB scored","match_id")
     val w = Window.partitionBy("match_id").orderBy(col("serveid").asc)
-    // If the previous ooutcome was PointFault then current point is a SecondServe
+    // If the previous outcome was PointFault then current point is a SecondServe
     resultDf.withColumn("SecondServe", lag("PointFault",1).over(w))
       .select(cols_selectionOrder.head, cols_selectionOrder.tail:_*)
+      .na.fill(0, Seq("SecondServe"))
 
   }
 

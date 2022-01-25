@@ -11,13 +11,13 @@ class Tests extends AnyFunSuite{
   val resourceCsvLineCount = 2212
 
 
-  test("TestSparkSession") {
+  ignore("TestSparkSession") {
     //val spark = Helper.getSparkSession("local[*]", "test")
     spark.conf.getAll.foreach( c => println(c._1, ":=", c._2))
     assert(spark.conf.getAll.isEmpty == false)
   }
 
-  test("ImportTestCSV") {
+  ignore("ImportTestCSV") {
     val df = Helper.loadCSV(spark, resourceCsvPath)
     assert(df.count() == resourceCsvLineCount)
 
@@ -38,7 +38,7 @@ class Tests extends AnyFunSuite{
 
       }
 
-  test("GetJsonSchemaForType") {
+  ignore("GetJsonSchemaForType") {
     val df = Helper.loadCSV(spark, resourceCsvPath)
     val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PointScored", "PhysioCalled","PointLet", "CodeViolation", "TimeAnnouncement")
     val jsonSchemaMap = eventElemTypes.map(t => t -> Helper.getJsonSchemaForType(spark, df, "match_element", t))
@@ -56,36 +56,36 @@ class Tests extends AnyFunSuite{
 
   test("FlattenSchema")  {
     val df = Helper.flattenSchema(spark, resourceCsvPath)
-    df.printSchema()
+//    df.printSchema()
 
   }
 
   test("Requirement_Clean_&_flatten_the_data") {
 
     val resultDf = Helper.cleanAndFlatten(spark, resourceCsvPath)
-    //resultDf.show()
+//    resultDf.orderBy("match_id","message_id").show()
   }
 
   test("Enrichment_AddSecondServeFlag") {
     val resultDf = Helper.enrichmentAddSecondFlag(spark, resourceCsvPath)
-    resultDf.show()
+//    resultDf.show()
   }
 
   test("Transformation") {
     val resultDf = Helper.transformation(spark, resourceCsvPath)
 
-    resultDf.printSchema()
-    resultDf.filter("match_element.eventElementType == 'PointScored'").select("message_id", "fixedOverallScore","match_element.score.overallSetScore" ).show(1000, false)
+//    resultDf.printSchema()
+//    resultDf.filter("match_element.eventElementType == 'PointScored'").select("message_id", "fixedOverallScore", "match_element.score.overallSetScore").show()
   }
 
   test("R&D") {
     // add a cumulative number of Aces in the match (regardless of who served the ace)
     val rndDf = Helper.RND(spark, resourceCsvPath)
-       rndDf.printSchema()
-       rndDf.select("match_id", "message_id","TotalMatchAces").show(1000)
+//  rndDf.printSchema()
+//  rndDf.select("match_id", "message_id","TotalMatchAces").show()
   }
 
-  test("ConvertStringColToJson") {
+  ignore("ConvertStringColToJson") {
     val m = Map[String,String]()
     val df = Helper.loadCSV(spark, resourceCsvPath)
     val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PhysioCalled","PointLet", "CodeViolation","TimeAnnouncement")
@@ -228,7 +228,7 @@ class Tests extends AnyFunSuite{
 
   }
 
-  test("pivotAndFill") {
+  ignore("pivotAndFill") {
     val data = Seq(
       ("EventA",2, "EventA","Event1"),
       ("EventA",3, "EventB","Event3"),
@@ -256,19 +256,5 @@ class Tests extends AnyFunSuite{
 
 
   }
-
-  test("oneHotEncode") {
-      val data = Seq(
-        ("EventA",2),
-        ("EventA",3),
-        ("EventB",4),
-        ("EventC",5)
-      )
-
-      val df = data.toDF("Event","ID")
-      df.show()
-
-    }
-
 
 }
