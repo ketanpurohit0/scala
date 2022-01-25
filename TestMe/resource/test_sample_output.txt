@@ -1,0 +1,172 @@
+test(FlattenSchema)
+
+root
+ |-- _c0: string (nullable = true)
+ |-- match_id: string (nullable = true)
+ |-- message_id: string (nullable = true)
+ |-- match_element_delayStatus: string (nullable = true)
+ |-- match_element_details_pointType: string (nullable = true)
+ |-- match_element_details_scoredBy: string (nullable = true)
+ |-- match_element_eventElementType: string (nullable = true)
+ |-- match_element_faultType: string (nullable = true)
+ |-- match_element_matchStatus_courtNum: long (nullable = true)
+ |-- match_element_matchStatus_firstServer: string (nullable = true)
+ |-- match_element_matchStatus_matchState_challengeEnded: string (nullable = true)
+ |-- match_element_matchStatus_matchState_evaluationStarted: string (nullable = true)
+ |-- match_element_matchStatus_matchState_locationTimestamp: string (nullable = true)
+ |-- match_element_matchStatus_matchState_playerId: long (nullable = true)
+ |-- match_element_matchStatus_matchState_state: string (nullable = true)
+ |-- match_element_matchStatus_matchState_team: string (nullable = true)
+ |-- match_element_matchStatus_matchState_treatmentEnded: string (nullable = true)
+ |-- match_element_matchStatus_matchState_treatmentLocation: string (nullable = true)
+ |-- match_element_matchStatus_matchState_treatmentStarted: string (nullable = true)
+ |-- match_element_matchStatus_matchState_won: string (nullable = true)
+ |-- match_element_matchStatus_numSets: long (nullable = true)
+ |-- match_element_matchStatus_scoringType: string (nullable = true)
+ |-- match_element_matchStatus_teamAPlayer1: string (nullable = true)
+ |-- match_element_matchStatus_teamAPlayersDetails_player1Country: string (nullable = true)
+ |-- match_element_matchStatus_teamAPlayersDetails_player1Id: string (nullable = true)
+ |-- match_element_matchStatus_teamBPlayer1: string (nullable = true)
+ |-- match_element_matchStatus_teamBPlayersDetails_player1Country: string (nullable = true)
+ |-- match_element_matchStatus_teamBPlayersDetails_player1Id: string (nullable = true)
+ |-- match_element_matchStatus_tieBreakType: string (nullable = true)
+ |-- match_element_matchStatus_tossChooser: string (nullable = true)
+ |-- match_element_matchStatus_tossWinner: string (nullable = true)
+ |-- match_element_matchStatus_umpire: string (nullable = true)
+ |-- match_element_matchStatus_umpireCode: string (nullable = true)
+ |-- match_element_matchStatus_umpireCountry: string (nullable = true)
+ |-- match_element_matchTime: string (nullable = true)
+ |-- match_element_nextServer_team: string (nullable = true)
+ |-- match_element_numOverrules: long (nullable = true)
+ |-- match_element_playerId: long (nullable = true)
+ |-- match_element_reason: string (nullable = true)
+ |-- match_element_score_currentGameScore_gameType: string (nullable = true)
+ |-- match_element_score_currentGameScore_pointsA: string (nullable = true)
+ |-- match_element_score_currentGameScore_pointsB: string (nullable = true)
+ |-- match_element_score_currentSetScore_gamesA: long (nullable = true)
+ |-- match_element_score_currentSetScore_gamesB: long (nullable = true)
+ |-- match_element_score_overallSetScore_setsA: long (nullable = true)
+ |-- match_element_score_overallSetScore_setsB: long (nullable = true)
+ |-- match_element_score_previousSetsScore: array (nullable = true)
+ |    |-- element: struct (containsNull = true)
+ |    |    |-- gamesA: long (nullable = true)
+ |    |    |-- gamesB: long (nullable = true)
+ |    |    |-- tieBreakScore: struct (nullable = true)
+ |    |    |    |-- pointsA: long (nullable = true)
+ |    |    |    |-- pointsB: long (nullable = true)
+ |-- match_element_seqNum: long (nullable = true)
+ |-- match_element_server_team: string (nullable = true)
+ |-- match_element_team: string (nullable = true)
+ |-- match_element_time: string (nullable = true)
+ |-- match_element_timestamp: string (nullable = true)
+ |-- match_element_won: string (nullable = true)
+
+test(Requirement_Clean_&_flatten_the_data)
+
++---------------+------------+-------+----------+--------+------------+------------+--------+----------+
+|         server|PhysioCalled|serveid|PointFault|PointLet|TeamA scored|TeamB scored|match_id|message_id|
++---------------+------------+-------+----------+--------+------------+------------+--------+----------+
+|      K. EDMUND|           0|      1|         0|       0|           0|           1|   29304|         5|
+|      K. EDMUND|           0|      2|         1|       0|           0|           0|   29304|         7|
+|      K. EDMUND|           0|      3|         0|       0|           0|           1|   29304|         9|
+|      K. EDMUND|           0|      4|         0|       0|           0|           1|   29304|        11|
+|      K. EDMUND|           0|      5|         1|       0|           0|           0|   29304|        13|
+|      K. EDMUND|           0|      6|         0|       0|           1|           0|   29304|        15|
+|      K. EDMUND|           0|      7|         0|       0|           0|           1|   29304|        17|
+|G. GARCIA-LOPEZ|           0|      8|         1|       0|           0|           0|   29304|        19|
+|G. GARCIA-LOPEZ|           0|      9|         0|       0|           0|           1|   29304|        21|
+|G. GARCIA-LOPEZ|           0|     10|         1|       0|           0|           0|   29304|        23|
+|G. GARCIA-LOPEZ|           0|     11|         0|       0|           0|           1|   29304|        25|
+|G. GARCIA-LOPEZ|           0|     12|         1|       0|           0|           0|   29304|        27|
+|G. GARCIA-LOPEZ|           0|     13|         0|       0|           1|           0|   29304|        29|
+|G. GARCIA-LOPEZ|           0|     14|         1|       0|           0|           0|   29304|        31|
+|G. GARCIA-LOPEZ|           0|     15|         0|       0|           1|           0|   29304|        33|
+|G. GARCIA-LOPEZ|           0|     16|         0|       0|           1|           0|   29304|        35|
+|G. GARCIA-LOPEZ|           0|     17|         1|       0|           0|           0|   29304|        37|
+|G. GARCIA-LOPEZ|           0|     18|         0|       0|           1|           0|   29304|        39|
+|      K. EDMUND|           0|     19|         0|       0|           0|           1|   29304|        41|
+|      K. EDMUND|           0|     20|         0|       0|           1|           0|   29304|        43|
++---------------+------------+-------+----------+--------+------------+------------+--------+----------+
+
+test(Enrichment_AddSecondServeFlag)
+
++---------------+------------+-----------+-------+----------+--------+------------+------------+--------+
+|         server|PhysioCalled|SecondServe|serveid|PointFault|PointLet|TeamA scored|TeamB scored|match_id|
++---------------+------------+-----------+-------+----------+--------+------------+------------+--------+
+|      K. EDMUND|           0|          0|      1|         0|       0|           0|           1|   29304|
+|      K. EDMUND|           0|          0|      2|         1|       0|           0|           0|   29304|
+|      K. EDMUND|           0|          1|      3|         0|       0|           0|           1|   29304|
+|      K. EDMUND|           0|          0|      4|         0|       0|           0|           1|   29304|
+|      K. EDMUND|           0|          0|      5|         1|       0|           0|           0|   29304|
+|      K. EDMUND|           0|          1|      6|         0|       0|           1|           0|   29304|
+|      K. EDMUND|           0|          0|      7|         0|       0|           0|           1|   29304|
+|G. GARCIA-LOPEZ|           0|          0|      8|         1|       0|           0|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          1|      9|         0|       0|           0|           1|   29304|
+|G. GARCIA-LOPEZ|           0|          0|     10|         1|       0|           0|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          1|     11|         0|       0|           0|           1|   29304|
+|G. GARCIA-LOPEZ|           0|          0|     12|         1|       0|           0|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          1|     13|         0|       0|           1|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          0|     14|         1|       0|           0|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          1|     15|         0|       0|           1|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          0|     16|         0|       0|           1|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          0|     17|         1|       0|           0|           0|   29304|
+|G. GARCIA-LOPEZ|           0|          1|     18|         0|       0|           1|           0|   29304|
+|      K. EDMUND|           0|          0|     19|         0|       0|           0|           1|   29304|
+|      K. EDMUND|           0|          0|     20|         0|       0|           1|           0|   29304|
++---------------+------------+-----------+-------+----------+--------+------------+------------+--------+
+
+test(Transformation)
+
++----------+-----------------+---------------+
+|message_id|fixedOverallScore|overallSetScore|
++----------+-----------------+---------------+
+|         6|           [0, 0]|           null|
+|        10|           [0, 0]|           null|
+|        12|           [0, 0]|           null|
+|        16|           [0, 0]|           null|
+|        18|           [0, 0]|           null|
+|        22|           [0, 0]|           null|
+|        26|           [0, 0]|           null|
+|        30|           [0, 0]|           null|
+|        34|           [0, 0]|           null|
+|        36|           [0, 0]|           null|
+|        40|           [0, 0]|           null|
+|        42|           [0, 0]|           null|
+|        44|           [0, 0]|           null|
+|        46|           [0, 0]|           null|
+|        50|           [0, 0]|           null|
+|        52|           [0, 0]|           null|
+|        54|           [0, 0]|           null|
+|        57|           [0, 0]|           null|
+|        59|           [0, 0]|           null|
+|        63|           [0, 0]|           null|
++----------+-----------------+---------------+
+only showing top 20 rows
+
+test("R&D")
+
++--------+----------+--------------+
+|match_id|message_id|TotalMatchAces|
++--------+----------+--------------+
+|   29304|         1|             0|
+|   29304|         2|             0|
+|   29304|         3|             0|
+|   29304|         4|             0|
+|   29304|         5|             0|
+|   29304|         6|             0|
+|   29304|         7|             0|
+|   29304|         8|             0|
+|   29304|         9|             0|
+|   29304|        10|             0|
+|   29304|        11|             0|
+|   29304|        12|             0|
+|   29304|        13|             0|
+|   29304|        14|             0|
+|   29304|        15|             0|
+|   29304|        16|             0|
+|   29304|        17|             0|
+|   29304|        18|             0|
+|   29304|        19|             0|
+|   29304|        20|             0|
++--------+----------+--------------+
+

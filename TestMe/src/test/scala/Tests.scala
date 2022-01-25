@@ -1,19 +1,38 @@
 import org.apache.spark.sql.{Column, DataFrame}
 import org.apache.spark.sql.expressions.Window
 import org.scalatest.funsuite.AnyFunSuite
-import org.apache.spark.sql.functions.{array, arrays_zip, col, concat, explode, expr, from_json, get_json_object, lag, lead, length, lit, row_number, schema_of_json, size, sum, to_json, when}
+import org.apache.spark.sql.functions.{
+  array,
+  arrays_zip,
+  col,
+  concat,
+  explode,
+  expr,
+  from_json,
+  get_json_object,
+  lag,
+  lead,
+  length,
+  lit,
+  row_number,
+  schema_of_json,
+  size,
+  sum,
+  to_json,
+  when
+}
 import org.apache.spark.sql.types.{DataType, StructType}
-class Tests extends AnyFunSuite{
+class Tests extends AnyFunSuite {
 
   val spark = Helper.getSparkSession("local[*]", "test")
   import spark.implicits._
-  val resourceCsvPath = "file:/MyWork/GIT/scala/TestMe/resource/keystrokes-for-tech-test.csv"
+  val resourceCsvPath =
+    "file:/MyWork/GIT/scala/TestMe/resource/keystrokes-for-tech-test.csv"
   val resourceCsvLineCount = 2212
-
 
   ignore("TestSparkSession") {
     //val spark = Helper.getSparkSession("local[*]", "test")
-    spark.conf.getAll.foreach( c => println(c._1, ":=", c._2))
+    spark.conf.getAll.foreach(c => println(c._1, ":=", c._2))
     assert(spark.conf.getAll.isEmpty == false)
   }
 
@@ -36,12 +55,23 @@ class Tests extends AnyFunSuite{
 //    |  1|   29304|         2|{'seqNum': 2, 'ma...|
 //    +---+--------+----------+--------------------+
 
-      }
+  }
 
   ignore("GetJsonSchemaForType") {
     val df = Helper.loadCSV(spark, resourceCsvPath)
-    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PointScored", "PhysioCalled","PointLet", "CodeViolation", "TimeAnnouncement")
-    val jsonSchemaMap = eventElemTypes.map(t => t -> Helper.getJsonSchemaForType(spark, df, "match_element", t))
+    val eventElemTypes = Array[String](
+      "MatchStatusUpdate",
+      "PointStarted",
+      "PointFault",
+      "PointScored",
+      "PhysioCalled",
+      "PointLet",
+      "CodeViolation",
+      "TimeAnnouncement"
+    )
+    val jsonSchemaMap = eventElemTypes.map(t =>
+      t -> Helper.getJsonSchemaForType(spark, df, "match_element", t)
+    )
 //    jsonSchemaMap.map(println)
 //    (MatchStatusUpdate,struct<eventElementType:string,matchStatus:struct<courtNum:bigint,firstServer:string,matchState:struct<locationTimestamp:string,state:string>,numSets:bigint,scoringType:string,teamAPlayer1:string,teamAPlayersDetails:struct<player1Country:string,player1Id:string>,teamBPlayer1:string,teamBPlayersDetails:struct<player1Country:string,player1Id:string>,tieBreakType:string,tossChooser:string,tossWinner:string,umpire:string,umpireCode:string,umpireCountry:string>,matchTime:string,seqNum:bigint,timestamp:string>)
 //    (PointStarted,struct<eventElementType:string,matchTime:string,nextServer:struct<team:string>,seqNum:bigint,server:struct<team:string>,timestamp:string>)
@@ -54,7 +84,7 @@ class Tests extends AnyFunSuite{
 
   }
 
-  test("FlattenSchema")  {
+  test("FlattenSchema") {
     val df = Helper.flattenSchema(spark, resourceCsvPath)
 //    df.printSchema()
 
@@ -86,19 +116,37 @@ class Tests extends AnyFunSuite{
   }
 
   ignore("ConvertStringColToJson") {
-    val m = Map[String,String]()
+    val m = Map[String, String]()
     val df = Helper.loadCSV(spark, resourceCsvPath)
-    val eventElemTypes = Array[String]("MatchStatusUpdate", "PointStarted", "PointFault", "PhysioCalled","PointLet", "CodeViolation","TimeAnnouncement")
-    val jsonSchemasPerType = eventElemTypes.map(t => t -> Helper.getJsonSchemaForType(spark, df, "match_element", t))
+    val eventElemTypes = Array[String](
+      "MatchStatusUpdate",
+      "PointStarted",
+      "PointFault",
+      "PhysioCalled",
+      "PointLet",
+      "CodeViolation",
+      "TimeAnnouncement"
+    )
+    val jsonSchemasPerType = eventElemTypes.map(t =>
+      t -> Helper.getJsonSchemaForType(spark, df, "match_element", t)
+    )
 
-
-    val dfs = jsonSchemasPerType.map( schemaForType => schemaForType._1 -> df.filter(col("match_element").contains(schemaForType._1)).withColumn(s"match_element", from_json(col("match_element"), schemaForType._2, m)))
+    val dfs = jsonSchemasPerType.map(schemaForType =>
+      schemaForType._1 -> df
+        .filter(col("match_element").contains(schemaForType._1))
+        .withColumn(
+          s"match_element",
+          from_json(col("match_element"), schemaForType._2, m)
+        )
+    )
 
     dfs.foreach(d => println(d._2.columns.mkString("Array(", ", ", ")")))
 
     dfs.foreach(d => d._2.select(col(s"match_element.*")).show(5))
 
-    val commonCols = dfs.map(d => d._2.select(col(s"match_element.*")).columns).reduce(_ intersect _)
+    val commonCols = dfs
+      .map(d => d._2.select(col(s"match_element.*")).columns)
+      .reduce(_ intersect _)
     println(commonCols.mkString("Array(", ", ", ")"))
 
 //    dfs.foreach(d => {println(d._1); d._2.printSchema()})
@@ -230,13 +278,13 @@ class Tests extends AnyFunSuite{
 
   ignore("pivotAndFill") {
     val data = Seq(
-      ("EventA",2, "EventA","Event1"),
-      ("EventA",3, "EventB","Event3"),
-      ("EventB",4, "EventC","Event2"),
-      ("EventC",5, "EventD","Event4")
+      ("EventA", 2, "EventA", "Event1"),
+      ("EventA", 3, "EventB", "Event3"),
+      ("EventB", 4, "EventC", "Event2"),
+      ("EventC", 5, "EventD", "Event4")
     )
 
-    val df = data.toDF("State","ID","PriorState","OutComeState")
+    val df = data.toDF("State", "ID", "PriorState", "OutComeState")
     df.show()
 
 //    val pivotDf = df.groupBy("ID").pivot(col("State")).agg(lit(1))
@@ -250,10 +298,8 @@ class Tests extends AnyFunSuite{
     val pivotedToPre = df.groupBy("ID").pivot("PriorState").agg(lit(1))
     pivotedToPre.show()
 
-    val pivotedToOutcome =  df.groupBy("ID").pivot("OutComeState").agg(lit(1))
+    val pivotedToOutcome = df.groupBy("ID").pivot("OutComeState").agg(lit(1))
     pivotedToOutcome.show()
-
-
 
   }
 
