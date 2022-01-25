@@ -1,0 +1,14 @@
+.metals/
+.bloop/
+.ammonite/
+metals.sbt
+project/
+.gradle/
+.idea/
+build/
+**/build/
+**/.idea/
+**/.gradle/
+**/target/
+**/out/
+**/gradle/
