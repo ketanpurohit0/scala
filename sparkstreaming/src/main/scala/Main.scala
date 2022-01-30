@@ -13,7 +13,7 @@ import scala.util.{Failure, Success, Try}
 
 object Main extends App {
   val conf = new SparkConf().setMaster("local[2]").setAppName("streaming")
-  val ssc = new StreamingContext(conf, Seconds(3))
+  val ssc = new StreamingContext(conf, Milliseconds(200))
   ssc.checkpoint("./checkpoint_ketan")
   val sc = ssc.sparkContext.setLogLevel("ERROR")
 
@@ -110,13 +110,13 @@ object Main extends App {
       oldValue: Option[String]
   ): Option[String] = {
 
-    println("===O>>", oldValue)
-    var overallScore = Option.empty[String]
+//    println("===O>>", oldValue)
+    var overallScore = oldValue
     s.foreach(si => {
       val json = si._3
       val prevSetsScore =
         (json \ "score" \ "previousSetsScore")
-      println("A>>", prevSetsScore)
+//      println("A>>", prevSetsScore)
       overallScore = prevSetsScore match {
         case JsDefined(value) =>
           value match {
@@ -132,7 +132,7 @@ object Main extends App {
                     case JsObject(underlying) => {
                       val gamesA = underlying.get("gamesA")
                       val gamesB = underlying.get("gamesB")
-                      println("B>>", gamesA, gamesB)
+//                      println("B>>", gamesA, gamesB)
                       val r = for {
                         game_wonByA <- gamesA
                         game_wonByB <- gamesB
@@ -147,22 +147,22 @@ object Main extends App {
                   }
                 })
                 .length
-              println(
-                "C>>",
-                arrayValue.mkString(","),
-                arrayValue.length,
-                games_wonByA
-              )
+//              println(
+//                "C>>",
+//                arrayValue.mkString(","),
+//                arrayValue.length,
+//                games_wonByA
+//              )
               val newv = Some(
                 Seq(games_wonByA, arrayValue.length - games_wonByA)
                   .mkString("-")
               )
 
-              println("N>>", newv)
+//              println("N>>", newv)
               newv
             }
           }
-        case undefined: JsUndefined => oldValue
+        case undefined: JsUndefined => overallScore
       }
     })
 
@@ -175,7 +175,7 @@ object Main extends App {
         }
     }
 
-    println("===R>>", newValue)
+//    println("===R>>", newValue)
 
     newValue
 
