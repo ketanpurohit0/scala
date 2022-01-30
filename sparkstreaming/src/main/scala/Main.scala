@@ -26,7 +26,8 @@ object Main extends App {
     .transform(filterOutBad(_))
     .transform(toKeyValuePair(_))
 
-  tuples.updateStateByKey(updateFunc _).print()
+//  tuples.print()
+  tuples.updateStateByKey(keepMatchScore _).print()
 
   ssc.start()
   ssc.awaitTermination()
@@ -104,17 +105,19 @@ object Main extends App {
     })
   }
 
-  def updateFunc(
+  def keepMatchScore(
       s: Seq[(Int, String, JsValue)],
-      o: Option[Int]
-  ): Option[Int] = {
+      oldValue: Option[String]
+  ): Option[String] = {
 
+    println("===O>>", oldValue)
+    var overallScore = Option.empty[String]
     s.foreach(si => {
       val json = si._3
       val prevSetsScore =
         (json \ "score" \ "previousSetsScore")
       println("A>>", prevSetsScore)
-      val overallScore = prevSetsScore match {
+      overallScore = prevSetsScore match {
         case JsDefined(value) =>
           value match {
             case JsArray(arrayValue) => {
@@ -150,13 +153,31 @@ object Main extends App {
                 arrayValue.length,
                 games_wonByA
               )
-              o
+              val newv = Some(
+                Seq(games_wonByA, arrayValue.length - games_wonByA)
+                  .mkString("-")
+              )
+
+              println("N>>", newv)
+              newv
             }
           }
-        case undefined: JsUndefined => o
+        case undefined: JsUndefined => oldValue
       }
     })
 
-    Some(2)
+    val newValue = overallScore match {
+      case Some(value) => overallScore
+      case None =>
+        oldValue match {
+          case None => Some("0-0")
+          case _    => oldValue
+        }
+    }
+
+    println("===R>>", newValue)
+
+    newValue
+
   }
 }
