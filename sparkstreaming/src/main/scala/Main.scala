@@ -2,12 +2,13 @@ import org.apache.spark.SparkConf
 import org.apache.spark.rdd.RDD
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import play.api.libs.json.{JsObject, JsValue, Json}
-
 import org.apache.spark._
 import org.apache.spark.streaming._
 import org.apache.spark.streaming.dstream.DStream
 import play.api.libs.json._
 
+import scala.collection.mutable
+import scala.util.parsing.input.PagedSeq
 import scala.util.{Failure, Success, Try}
 
 object Main extends App {
@@ -83,30 +84,79 @@ object Main extends App {
   ) = {
     in.map(i => {
       val seqNo = i._1 match {
-        case Some(value) => 2
-        case None        => 2
+        case Some(value) => value.as[Int]
+        case None        => 0
       }
 
       val match_id = i._2
 
       val eventElementType = i._3 match {
-        case Some(value) => 2
-        case None        => 2
+        case Some(value) => value.as[String]
+        case None        => "Unknown"
       }
 
       val json = i._4 match {
-        case Failure(exception) => 2
-        case Success(value)     => 2
+        case Failure(exception) => Json.parse("")
+        case Success(value)     => value
       }
 
-      ((seqNo, match_id), ("a", "b", "c"))
+      ((match_id), (seqNo, eventElementType, json))
     })
   }
 
   def updateFunc(
-      s: Seq[(String, String, String)],
+      s: Seq[(Int, String, JsValue)],
       o: Option[Int]
   ): Option[Int] = {
+
+    s.foreach(si => {
+      val json = si._3
+      val prevSetsScore =
+        (json \ "score" \ "previousSetsScore")
+      println("A>>", prevSetsScore)
+      val overallScore = prevSetsScore match {
+        case JsDefined(value) =>
+          value match {
+            case JsArray(arrayValue) => {
+              val games_wonByA = arrayValue
+                .filter(item => {
+                  item match {
+                    case JsNull             => true
+                    case boolean: JsBoolean => true
+                    case JsNumber(value)    => true
+                    case JsString(value)    => true
+                    case JsArray(value)     => true
+                    case JsObject(underlying) => {
+                      val gamesA = underlying.get("gamesA")
+                      val gamesB = underlying.get("gamesB")
+                      println("B>>", gamesA, gamesB)
+                      val r = for {
+                        game_wonByA <- gamesA
+                        game_wonByB <- gamesB
+                      } yield game_wonByA.as[Int] > game_wonByB.as[Int]
+                      val result = r match {
+                        case Some(boolean_result) => boolean_result
+                        case None                 => false
+                      }
+
+                      result
+                    }
+                  }
+                })
+                .length
+              println(
+                "C>>",
+                arrayValue.mkString(","),
+                arrayValue.length,
+                games_wonByA
+              )
+              o
+            }
+          }
+        case undefined: JsUndefined => o
+      }
+    })
+
     Some(2)
   }
 }
