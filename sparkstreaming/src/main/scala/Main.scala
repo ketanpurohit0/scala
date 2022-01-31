@@ -14,10 +14,14 @@ import scala.util.{Failure, Success, Try}
 object Main extends App {
 
   // nc -q 20 -i 1 -lk 9999 < /mnt/c/MyWork/GIT/scala/TestMe/resource/keystrokes-for-tech-test.csv
-  // above submits 1 line every 1 second from file, drip feeding events
+  // above submits 1 line every 1 second from file, drip feeding events in order found in file
 
   // nc -lk 9999 < /mnt/c/MyWork/GIT/scala/TestMe/resource/keystrokes-for-tech-test.csv
-  // above submits ALL lines immediately, 'drink from a hose-pipe'
+  // above submits ALL lines immediately, 'drink from the fire-hose'
+
+  // python3 PlayTennisEvents.py | nc -lk 9999
+  // above submit events in relative time order as they occurred, per match - most 'realistic'
+  // approach to multiple matches in progress at once
   val ssc =
     Helper.sparkStreamingContext("local[2]", "streaming", Milliseconds(3000))
   ssc.checkpoint("./checkpoint_ketan")
