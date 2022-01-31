@@ -13,7 +13,7 @@ import scala.util.{Failure, Success, Try}
 
 object Main extends App {
   val conf = new SparkConf().setMaster("local[2]").setAppName("streaming")
-  val ssc = new StreamingContext(conf, Milliseconds(200))
+  val ssc = new StreamingContext(conf, Milliseconds(3000))
   ssc.checkpoint("./checkpoint_ketan")
   val sc = ssc.sparkContext.setLogLevel("ERROR")
 
@@ -28,6 +28,7 @@ object Main extends App {
 
 //  tuples.print()
   tuples.updateStateByKey(keepMatchScore _).print()
+  tuples.updateStateByKey(countFaults _).print()
 
   ssc.start()
   ssc.awaitTermination()
@@ -103,6 +104,35 @@ object Main extends App {
 
       ((match_id), (seqNo, eventElementType, json))
     })
+  }
+
+  def countFaults(
+      s: Seq[(Int, String, JsValue)],
+      oldValue: Option[Int]
+  ): Option[Int] = {
+
+    val oldValue_ : Option[Int] = oldValue match {
+      case Some(value) => Some(value)
+      case None        => Some(0)
+    }
+
+    val newValue = s.foldLeft(oldValue_)((runningCount, tuples) => {
+      val json = tuples._3
+      val eventElementType = (json \ "eventElementType")
+      eventElementType match {
+        case JsDefined(value) =>
+          value match {
+            case JsString(strValue) =>
+              if (strValue == "PointFault")
+                for (x <- runningCount; y <- Some(1)) yield x + y
+              else runningCount
+            case _ => runningCount
+          }
+        case undefined: JsUndefined => runningCount
+      }
+    })
+
+    newValue
   }
 
   def keepMatchScore(
