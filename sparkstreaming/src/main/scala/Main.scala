@@ -19,6 +19,7 @@ object Main extends App {
   // nc -lk 9999 < /mnt/c/MyWork/GIT/scala/TestMe/resource/keystrokes-for-tech-test.csv
   // above submits ALL lines immediately, 'drink from the fire-hose'
 
+  // cd /mnt/c/MyWork/GIT/scala/sparkstreaming/other
   // python3 PlayTennisEvents.py | nc -lk 9999
   // above submit events in relative time order as they occurred, per match - most 'realistic'
   // approach to multiple matches in progress at once
