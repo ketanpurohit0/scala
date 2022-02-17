@@ -42,9 +42,6 @@ case class ReportRepo2(private val db: Database) {
       GROUP BY questionId, setY
     """
 
-    //       AND questionId in (${relevantQuestions.mkString(",")})
-    //println(query)
-
     runAction(query.as[(String, String, Int)])
   }
 

@@ -58,44 +58,31 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
 
     val f_question = reportRepo.explore_question(surveyId, "en_GB")
     val result_question = Await.result(f_question, 15.seconds)
-    //println(result)
 
 
     println("START ---------------------------------------------------")
     val relevantQuestions = result_question.map(r =>r.questionId.toString.toUpperCase())
 
     // questionId, (setY.hasNumericCodes, List((reportingValue, setYid)))
-    val summary_statistics = result_question.map(r => (r.questionId.toUpperCase,r.setY.map(s => (s.hasNumericCodes, if (s.hasNumericCodes) s.options.map(o => (o.reportingValue, o.id.toUpperCase)) else List()))))
-    println(summary_statistics.length, summary_statistics)
+    val question_details = result_question.map(r => (r.questionId.toUpperCase,r.setY.map(s => (s.hasNumericCodes, if (s.hasNumericCodes) s.options.map(o => (o.reportingValue, o.id.toUpperCase)) else List()))))
 
-//    result_question.foreach(r => {
-//      r.setY match {
-//        case Some(setY) => {
-//          println(r.questionId, setY.id, setY.hasNumericCodes)
-//          if (setY.hasNumericCodes) {
-//            setY.options.foreach(o => o.reportingValue match {
-//              case Some(reportingValue) => println("\t", reportingValue, o.id)
-//              case None => println("\t", "NO REPORTING VALUE - SHOULD NOT HAPPEN")
-//            })
-//          }
-//          else {
-//            println("\t", "NO NUMERIC CODES")
-//          }
-//        }
-//        case None => println("NO SETY")
-//      }
-//    })
+
     println("END ---------------------------------------------------")
 
     println("START -------------------------------------------------")
-    //    println(relevantQuestions)
     val f_survey = reportRepo.explore_surveydataopt(surveyId, relevantQuestions, "en_GB")
-    val result_surveydataopt = Await.result(f_survey, 15.seconds)
-//    println(result_surveydataopt.length, result_surveydataopt)
+    val result_summary_stats = Await.result(f_survey, 15.seconds)
     // (questionId, setYid, count(*))
-    val filtered_relevant = result_surveydataopt.filter(p => relevantQuestions.contains(p._1.toUpperCase))
-    println(filtered_relevant.length,filtered_relevant)
+    val filtered_summary_stats = result_summary_stats.filter(p => relevantQuestions.contains(p._1.toUpperCase))
     println("END ---------------------------------------------------")
+
+    val monadic_join = for {
+      details <- question_details
+      summary_stats <- filtered_summary_stats
+      if (details._1 == summary_stats._1)
+    } yield (details, summary_stats)
+
+    monadic_join.foreach(m => println(m))
 
   }
 }
