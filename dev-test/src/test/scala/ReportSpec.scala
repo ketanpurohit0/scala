@@ -26,7 +26,7 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
   }
 
   //testOnly *ReportSpec -- -t responses
-  test("responses") {
+  ignore("responses") {
     val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
     val report = reportService.report(surveyId, "en_GB")
 
@@ -36,7 +36,7 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
   }
 
   //testOnly *ReportSpec -- -t average
-  test("average") {
+  ignore("average") {
     val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
     val report = reportService.report(surveyId, "en_GB")
 
@@ -45,30 +45,50 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
     Some(6.520833333333334) should equal (result.average)
   }
 
-  test("explore_survey") {
-    val f = reportRepo.explore_survey()
-    val result = Await.result(f, 15.seconds)
-    println(result)
+  ignore("explore_survey") {
+//    val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
+//
+//    val f = reportRepo.explore_surveydataopt(surveyId, "en_GB")
+//    val result = Await.result(f, 15.seconds)
+//    println(result)
   }
 
   test("explore_question") {
-    val f = reportRepo.explore_question()
-    val result = Await.result(f, 15.seconds)
+    val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
+
+    val f_question = reportRepo.explore_question(surveyId, "en_GB")
+    val result_question = Await.result(f_question, 15.seconds)
     //println(result)
 
+
     println("START ---------------------------------------------------")
-    result.foreach(r => {
+    val relevantQuestions = result_question.map(r =>r.questionId.toString.toUpperCase())
+    println(relevantQuestions)
+    result_question.foreach(r => {
       r.setY match {
         case Some(setY) => {
-          println(r.questionId, setY.hasNumericCodes)
-          setY.options.foreach(o => o.reportingValue match {
-            case Some(reportingValue) => println("\t", reportingValue)
-            case None => println("\t", "NO REPORTING VALUE")
-          })
+          println(r.questionId, setY.id, setY.hasNumericCodes)
+          if (setY.hasNumericCodes) {
+            setY.options.foreach(o => o.reportingValue match {
+              case Some(reportingValue) => println("\t", reportingValue, o.id)
+              case None => println("\t", "NO REPORTING VALUE - SHOULD NOT HAPPEN")
+            })
+          }
+          else {
+            println("\t", "NO NUMERIC CODES")
+          }
         }
         case None => println("NO SETY")
       }
     })
+    println("END ---------------------------------------------------")
+
+    println("START -------------------------------------------------")
+    val f_survey = reportRepo.explore_surveydataopt(surveyId, relevantQuestions, "en_GB")
+    val result_surveydataopt = Await.result(f_survey, 15.seconds)
+    println(result_surveydataopt.length, result_surveydataopt)
+    val filtered_relevant = result_surveydataopt.filter(p => relevantQuestions.contains(p._1.toUpperCase))
+    println(filtered_relevant.length,filtered_relevant)
     println("END ---------------------------------------------------")
 
   }

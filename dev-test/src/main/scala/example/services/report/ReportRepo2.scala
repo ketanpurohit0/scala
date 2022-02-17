@@ -33,24 +33,29 @@ case class ReportRepo2(private val db: Database) {
     result
   }
 
-  def explore_survey() = {
+  def explore_surveydataopt(surveyId: UUID, relevantQuestions: Vector[String], langCode: String) = {
     val query =
       sql"""
-      SELECT * FROM survey
+      SELECT questionId, setY, count(*)
+      FROM surveydataopt
+      WHERE surveyId = ${surveyId.toString}
+      GROUP BY questionId, setY
     """
 
-    runAction(query.as[Survey])
+    //       AND questionId in (${relevantQuestions.mkString(",")})
+    //println(query)
+
+    runAction(query.as[(String, String, Int)])
   }
 
-  def explore_question() = {
+  def explore_question(surveyId: UUID, langCode: String) = {
     val query =
       sql"""
             SELECT * FROM question
             INNER JOIN surveypagequestion ON surveypagequestion.questionId = question.questionId
             INNER JOIN survey ON survey.surveyId = surveypagequestion.surveyId
             WHERE question.questionType IN ('RD','CH')
-            AND survey.surveyId = 'ACC36FA7-4B09-11E9-AF77-0A3056FD536A'
-            -- AND question.questionId = '4578706c-6f72-6951-3132-333000000000'
+            AND survey.surveyId = ${surveyId.toString}
         """
 
     runAction(query.as[Question])
