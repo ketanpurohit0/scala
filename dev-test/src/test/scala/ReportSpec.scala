@@ -63,30 +63,36 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
 
     println("START ---------------------------------------------------")
     val relevantQuestions = result_question.map(r =>r.questionId.toString.toUpperCase())
-    println(relevantQuestions)
-    result_question.foreach(r => {
-      r.setY match {
-        case Some(setY) => {
-          println(r.questionId, setY.id, setY.hasNumericCodes)
-          if (setY.hasNumericCodes) {
-            setY.options.foreach(o => o.reportingValue match {
-              case Some(reportingValue) => println("\t", reportingValue, o.id)
-              case None => println("\t", "NO REPORTING VALUE - SHOULD NOT HAPPEN")
-            })
-          }
-          else {
-            println("\t", "NO NUMERIC CODES")
-          }
-        }
-        case None => println("NO SETY")
-      }
-    })
+
+    // questionId, (setY.hasNumericCodes, List((reportingValue, setYid)))
+    val summary_statistics = result_question.map(r => (r.questionId.toUpperCase,r.setY.map(s => (s.hasNumericCodes, if (s.hasNumericCodes) s.options.map(o => (o.reportingValue, o.id.toUpperCase)) else List()))))
+    println(summary_statistics.length, summary_statistics)
+
+//    result_question.foreach(r => {
+//      r.setY match {
+//        case Some(setY) => {
+//          println(r.questionId, setY.id, setY.hasNumericCodes)
+//          if (setY.hasNumericCodes) {
+//            setY.options.foreach(o => o.reportingValue match {
+//              case Some(reportingValue) => println("\t", reportingValue, o.id)
+//              case None => println("\t", "NO REPORTING VALUE - SHOULD NOT HAPPEN")
+//            })
+//          }
+//          else {
+//            println("\t", "NO NUMERIC CODES")
+//          }
+//        }
+//        case None => println("NO SETY")
+//      }
+//    })
     println("END ---------------------------------------------------")
 
     println("START -------------------------------------------------")
+    //    println(relevantQuestions)
     val f_survey = reportRepo.explore_surveydataopt(surveyId, relevantQuestions, "en_GB")
     val result_surveydataopt = Await.result(f_survey, 15.seconds)
-    println(result_surveydataopt.length, result_surveydataopt)
+//    println(result_surveydataopt.length, result_surveydataopt)
+    // (questionId, setYid, count(*))
     val filtered_relevant = result_surveydataopt.filter(p => relevantQuestions.contains(p._1.toUpperCase))
     println(filtered_relevant.length,filtered_relevant)
     println("END ---------------------------------------------------")
