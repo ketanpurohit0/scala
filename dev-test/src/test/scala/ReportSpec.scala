@@ -102,7 +102,9 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
       details <- result_question_flattened.flatten.groupBy(f => f._1)
       summary_stats <- filtered_summary_stats.groupBy(f => f._1)
       if (details._1 == summary_stats._1) //&& (details._2 == summary_stats._2)
-    } yield (summary_stats._1, summary_stats._2.map(x=>x._3))
+      result_responses = summary_stats._2.map(x=>x._3)
+      result_results = result_responses.map(f => (100.0*f)/result_responses.sum )
+    } yield (summary_stats._1, result_responses,result_results)
 
     println("MJ2 -------------------------------------------------")
     monadic_join2.foreach(m => println(m))
