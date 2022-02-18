@@ -89,20 +89,20 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
     val filtered_summary_stats = result_summary_stats.filter(p => relevantQuestions.contains(p._1.toUpperCase))
     println("END ---------------------------------------------------")
 
-    val monadic_join = for {
-      details <- question_details
-      summary_stats <- filtered_summary_stats
-      if (details._1 == summary_stats._1)
-    } yield (details, summary_stats)
-
-    println("MJ1 -------------------------------------------------")
-    monadic_join.foreach(m => println(m))
+//    val monadic_join = for {
+//      details <- question_details
+//      summary_stats <- filtered_summary_stats
+//      if (details._1 == summary_stats._1)
+//    } yield (details, summary_stats)
+//
+//    println("MJ1 -------------------------------------------------")
+//    monadic_join.foreach(m => println(m))
 
     val monadic_join2 = for {
-      details <- result_question_flattened.flatten
-      summary_stats <- filtered_summary_stats
-      if (details._1 == summary_stats._1) && (details._2 == summary_stats._2)
-    } yield (details, summary_stats)
+      details <- result_question_flattened.flatten.groupBy(f => f._1)
+      summary_stats <- filtered_summary_stats.groupBy(f => f._1)
+      if (details._1 == summary_stats._1) //&& (details._2 == summary_stats._2)
+    } yield (summary_stats._1, summary_stats._2.map(x=>x._3))
 
     println("MJ2 -------------------------------------------------")
     monadic_join2.foreach(m => println(m))
