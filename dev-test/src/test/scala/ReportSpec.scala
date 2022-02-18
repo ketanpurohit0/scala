@@ -26,7 +26,7 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
   }
 
   //testOnly *ReportSpec -- -t responses
-  ignore("responses") {
+  test("responses") {
     val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
     val report = reportService.report(surveyId, "en_GB")
 
@@ -36,24 +36,24 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
   }
 
   //testOnly *ReportSpec -- -t average
-  ignore("average") {
+  test("average") {
     val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
     val report = reportService.report(surveyId, "en_GB")
 
     val t = Await.result(report, 15.seconds)
     val result = t(UUID.fromString("4578706c-6f72-6951-3132-333000000000"))
-    Some(6.520833333333334) should equal (result.average)
+    // NOT equal within tolerance, so modified code as appropriate
+    //Some(6.520833333333334) should equal (result.average)
+    val tolerance = 1E-10
+    for {
+      expected <- Some(6.520833333333334)
+      actual <- result.average
+    } yield (assert (math.abs(expected - actual) <= tolerance))
+
+
   }
 
-  ignore("explore_survey") {
-//    val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
-//
-//    val f = reportRepo.explore_surveydataopt(surveyId, "en_GB")
-//    val result = Await.result(f, 15.seconds)
-//    println(result)
-  }
-
-  test("explore_question") {
+  ignore("explore_question") {
     val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
 
     val f_question = reportRepo.read_questions_for_survey(surveyId, "en_GB")

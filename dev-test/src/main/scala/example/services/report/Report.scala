@@ -23,7 +23,7 @@ case class Report(repo: ReportRepo2) {
 
     // convert the Result object to a list of tuples of the form
     // (questionId, setYid, hasNunericCodes, Optional(reportingValue)
-    val result_question_flattened : Vector[(String, String, Boolean, Option[Double])] = {
+    val resultQuestionFlattened : Vector[(String, String, Boolean, Option[Double])] = {
       for {
         question <- resultOnQuestions
         setY <- question.setY
@@ -40,10 +40,33 @@ case class Report(repo: ReportRepo2) {
     val filteredSummaryStats :  Vector[(String, String, Int)] = resultSurveyData.filter(p => relevantQuestions.contains(p._1.toUpperCase))
 
     // Phase 3 - use both structures to obtain a composite view of the required result
+    val monadicJoin = for {
+      // group by 'questionId'
+      questionDetails <- resultQuestionFlattened.groupBy(f => f._1)
+      // also group by 'questionId'
+      summaryStatistics <- filteredSummaryStats.groupBy(f => f._1)
+      // monadic 'join' - must have same questionId
+      if (questionDetails._1 == summaryStatistics._1)
+      // collect the 'responses' into a vector, by picking out the count attribute
+      responses = summaryStatistics._2.map(x=>x._3)
+      // calculated the 'result' - % distribution by dividing each item by overall sum
+      results = responses.map(f => (100.0*f)/responses.sum )
+      // collect a map of setYid to its corresponding count
+      ysetCountAsMap : Map[String, Int] = summaryStatistics._2.map { case (a, b, c) => Map(b -> c)}.flatten.toMap
+      // collect a map of setYid to its corresponding detail
+      ysetWeightsAsMap: Map[String, Option[Double]] = questionDetails._2.map { case (a, b, c, d) => Map(b -> d)}.flatten.toMap
+      // perform the calculation of the average
+      weightedSum = ysetCountAsMap
+          .zip(ysetWeightsAsMap)
+          .toList
+          .map(x => (x._2._2.getOrElse(0.0),x._1._2))
+          .map(y => y._1 * y._2 * 1.0).sum
+      weighedAverage = weightedSum/responses.sum
 
+    } yield (Util.uuid(summaryStatistics._1), Result(List("NOT IMPLEMENTED"), responses.toList, results.toList, Some(weighedAverage)))
 
-    // Add methods to repo to fetch the data from MySQL
-    Future(Map(Util.uuid("4578706c-6f72-6951-3132-333000000000") -> Result(List("A"), List(1),List(1.0), Some(1.0) )))
+    // Respond with our map
+    Future(monadicJoin)
 
   }
 }
