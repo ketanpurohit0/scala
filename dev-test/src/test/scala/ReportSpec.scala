@@ -56,7 +56,7 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
   test("explore_question") {
     val surveyId = UUID.fromString("ACC36FA7-4B09-11E9-AF77-0A3056FD536A")
 
-    val f_question = reportRepo.explore_question(surveyId, "en_GB")
+    val f_question = reportRepo.read_questions_for_survey(surveyId, "en_GB")
     val result_question = Await.result(f_question, 15.seconds)
 
 
@@ -81,7 +81,7 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
     println("END ---------------------------------------------------")
 
     println("START -------------------------------------------------")
-    val f_survey = reportRepo.explore_surveydataopt(surveyId, relevantQuestions, "en_GB")
+    val f_survey = reportRepo.read_surveydataopt(surveyId, relevantQuestions, "en_GB")
     val result_summary_stats = Await.result(f_survey, 15.seconds)
     // (questionId, setYid, count(*))
     val filtered_summary_stats = result_summary_stats.filter(p => relevantQuestions.contains(p._1.toUpperCase))

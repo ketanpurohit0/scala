@@ -33,7 +33,7 @@ case class ReportRepo2(private val db: Database) {
     result
   }
 
-  def explore_surveydataopt(surveyId: UUID, relevantQuestions: Vector[String], langCode: String) = {
+  def read_surveydataopt(surveyId: UUID, relevantQuestions: Vector[String], langCode: String) = {
     val query =
       sql"""
       SELECT questionId, setY, count(*)
@@ -45,7 +45,7 @@ case class ReportRepo2(private val db: Database) {
     runAction(query.as[(String, String, Int)])
   }
 
-  def explore_question(surveyId: UUID, langCode: String) = {
+  def read_questions_for_survey(surveyId: UUID, langCode: String) = {
     val query =
       sql"""
             SELECT * FROM question
