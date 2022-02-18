@@ -66,6 +66,19 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
     // questionId, (setY.hasNumericCodes, List((reportingValue, setYid)))
     val question_details = result_question.map(r => (r.questionId.toUpperCase,r.setY.map(s => (s.hasNumericCodes, if (s.hasNumericCodes) s.options.map(o => (o.reportingValue, o.id.toUpperCase)) else List()))))
 
+    val tryAgain = result_question.map(f => (f.questionId, f.setY))
+    val xx = tryAgain.flatMap(t => t._2)
+    val xx2 = result_question.flatMap(f => f.setY)
+    // (questionId, setYid, hasNunericCodes, Optional(reportingValue)
+    val result_question_flattened = for {
+      a <- result_question
+      xx2 <- a.setY
+      y = xx2.options.map(o => (a.questionId.toUpperCase, o.id.toUpperCase, xx2.hasNumericCodes, o.reportingValue))
+    } yield y
+
+    println("**!", result_question_flattened.length, result_question.length)
+//    l.foreach(li => println(li))
+    result_question_flattened.flatten.foreach(li => println(li))
 
     println("END ---------------------------------------------------")
 
@@ -82,7 +95,18 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
       if (details._1 == summary_stats._1)
     } yield (details, summary_stats)
 
+    println("MJ1 -------------------------------------------------")
     monadic_join.foreach(m => println(m))
+
+    val monadic_join2 = for {
+      details <- result_question_flattened.flatten
+      summary_stats <- filtered_summary_stats
+      if (details._1 == summary_stats._1) && (details._2 == summary_stats._2)
+    } yield (details, summary_stats)
+
+    println("MJ2 -------------------------------------------------")
+    monadic_join2.foreach(m => println(m))
+
 
   }
 }
