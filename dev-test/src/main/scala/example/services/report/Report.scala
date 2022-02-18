@@ -42,19 +42,21 @@ case class Report(repo: ReportRepo2) {
     // Phase 3 - use both structures to obtain a composite view of the required result
     val monadicJoin = for {
       // group by 'questionId'
-      questionDetails <- resultQuestionFlattened.groupBy(f => f._1)
+      questionDetails <- resultQuestionFlattened.groupBy( {case (questionId, _, _, _) => questionId})
       // also group by 'questionId'
-      summaryStatistics <- filteredSummaryStats.groupBy(f => f._1)
+      summaryStatistics <- filteredSummaryStats.groupBy({case (questionId, _, _) => questionId})
       // monadic 'join' - must have same questionId
       if (questionDetails._1 == summaryStatistics._1)
       // collect the 'responses' into a vector, by picking out the count attribute
-      responses = summaryStatistics._2.map(x=>x._3)
+      responses = summaryStatistics._2.map({case (questionId, setYid, count) => count})
       // calculated the 'result' - % distribution by dividing each item by overall sum
       results = responses.map(f => (100.0*f)/responses.sum )
       // collect a map of setYid to its corresponding count
-      ysetCountAsMap : Map[String, Int] = summaryStatistics._2.map { case (a, b, c) => Map(b -> c)}.flatten.toMap
+      ysetCountAsMap : Map[String, Int] = summaryStatistics._2
+                                          .map { case (questionId, setYid, count) => Map(setYid -> count)}.flatten.toMap
       // collect a map of setYid to its corresponding detail
-      ysetWeightsAsMap: Map[String, Option[Double]] = questionDetails._2.map { case (a, b, c, d) => Map(b -> d)}.flatten.toMap
+      ysetWeightsAsMap: Map[String, Option[Double]] = questionDetails._2
+                                          .map { case (questionId, setYid, hasNumericCode, reportingValue) => Map(setYid -> reportingValue)}.flatten.toMap
       // perform the calculation of the average
       weightedSum = ysetCountAsMap
           .zip(ysetWeightsAsMap)
