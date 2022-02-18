@@ -76,8 +76,6 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
       y = xx2.options.map(o => (a.questionId.toUpperCase, o.id.toUpperCase, xx2.hasNumericCodes, o.reportingValue))
     } yield y
 
-    println("**!", result_question_flattened.length, result_question.length)
-//    l.foreach(li => println(li))
     val x = result_question_flattened.flatten //.foreach(li => println(li))
 
     println("END ---------------------------------------------------")
@@ -89,16 +87,8 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
     val filtered_summary_stats = result_summary_stats.filter(p => relevantQuestions.contains(p._1.toUpperCase))
     println("END ---------------------------------------------------")
 
-//    val monadic_join = for {
-//      details <- question_details
-//      summary_stats <- filtered_summary_stats
-//      if (details._1 == summary_stats._1)
-//    } yield (details, summary_stats)
-//
-//    println("MJ1 -------------------------------------------------")
-//    monadic_join.foreach(m => println(m))
 
-    val monadic_join2 = for {
+    val monadic_join = for {
       details <- result_question_flattened.flatten.groupBy(f => f._1)
       summary_stats <- filtered_summary_stats.groupBy(f => f._1)
       if (details._1 == summary_stats._1) //&& (details._2 == summary_stats._2)
@@ -114,11 +104,9 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
       weightedSum = yy.map(y => y._1 * y._2 * 1.0).sum
       weighedAverage = weightedSum/result_responses.sum
 
-    } yield (summary_stats._1, result_responses, result_results, weighedAverage)
+    } yield (summary_stats._1, Result(List(), result_responses.toList, result_results.toList, Some(weighedAverage)))
 
-    println("MJ2 -------------------------------------------------")
-    monadic_join2.foreach(m => println(m))
-
+    monadic_join.foreach(m => println(m))
 
   }
 }
