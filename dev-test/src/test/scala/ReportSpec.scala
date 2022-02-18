@@ -108,8 +108,13 @@ class ReportSpec extends FunSuite with Matchers with BeforeAndAfterAll{
       //ysetCount = summary_stats._2.groupBy(f => f._2)
       ysetCountAsMap = summary_stats._2.map { case (a, b, c) => Map(b -> c)}.flatten.toMap
       ysetWeightsAsMap = details._2.map { case (a, b, c, d) => Map(b -> d)}.flatten.toMap
+      xx = ysetCountAsMap.zip(ysetWeightsAsMap).toList
+      yy = xx.map(x => (x._2._2.getOrElse(0.0),x._1._2))
+      //weightedSum = xx.map(x => x._2._2.getOrElse(0.) * x._1._2).sum
+      weightedSum = yy.map(y => y._2 * y._2 * 1.0).sum
+      weighedAverage = weightedSum/result_responses.sum
 
-    } yield (summary_stats._1, ysetCountAsMap, ysetWeightsAsMap, result_responses,result_results)
+    } yield (summary_stats._1, weightedSum, weighedAverage, result_responses,result_results)
 
     println("MJ2 -------------------------------------------------")
     monadic_join2.foreach(m => println(m))
