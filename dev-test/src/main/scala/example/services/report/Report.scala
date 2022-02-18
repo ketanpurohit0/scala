@@ -62,7 +62,7 @@ case class Report(repo: ReportRepo2) {
           .zip(ysetWeightsAsMap)
           .toList
           .map(x => (x._2._2.getOrElse(0.0),x._1._2))
-          .map(y => y._1 * y._2 * 1.0).sum
+          .map({case (weight, count) => weight * count * 1.0}).sum
       weighedAverage = weightedSum/responses.sum
 
     } yield (Util.uuid(summaryStatistics._1), Result(List("NOT IMPLEMENTED"), responses.toList, results.toList, Some(weighedAverage)))
