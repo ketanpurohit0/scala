@@ -61,7 +61,7 @@ case class Report(repo: ReportRepo2) {
       weightedSum = ysetCountAsMap
           .zip(ysetWeightsAsMap)
           .toList
-          .map(x => (x._2._2.getOrElse(0.0),x._1._2))
+          .map({case ((_, count),(_, weight)) => (weight.getOrElse(0.0),count)})
           .map({case (weight, count) => weight * count * 1.0}).sum
       weighedAverage = weightedSum/responses.sum
 
