@@ -22,12 +22,12 @@ case class Report(repo: ReportRepo2) {
     val relevantQuestions = resultOnQuestions.map(r =>r.questionId.toString.toUpperCase())
 
     // convert the Result object to a list of tuples of the form
-    // (questionId, setYid, hasNunericCodes, Optional(reportingValue)
-    val resultQuestionFlattened : Vector[(String, String, Boolean, Option[Double])] = {
+    // (questionId, setYid, hasNunericCodes, Optional(reportingValue), label
+    val resultQuestionFlattened : Vector[(String, String, Boolean, Option[Double], String)] = {
       for {
         question <- resultOnQuestions
         setY <- question.setY
-        y = setY.options.map(o => (question.questionId.toUpperCase, o.id.toUpperCase, setY.hasNumericCodes, o.reportingValue))
+        y = setY.options.map(o => (question.questionId.toUpperCase, o.id.toUpperCase, setY.hasNumericCodes, o.reportingValue, o.langs(langCode).text))
       } yield y
     }.flatten
 
@@ -42,7 +42,7 @@ case class Report(repo: ReportRepo2) {
     // Phase 3 - use both structures to obtain a composite view of the required result
     val monadicJoin = for {
       // group by 'questionId'
-      questionDetails <- resultQuestionFlattened.groupBy( {case (questionId, _, _, _) => questionId})
+      questionDetails <- resultQuestionFlattened.groupBy( {case (questionId, _, _, _, _) => questionId})
       // also group by 'questionId'
       summaryStatistics <- filteredSummaryStats.groupBy({case (questionId, _, _) => questionId})
       // monadic 'join' - must have same questionId
@@ -51,12 +51,14 @@ case class Report(repo: ReportRepo2) {
       responses = summaryStatistics._2.map({case (questionId, setYid, count) => count})
       // calculated the 'result' - % distribution by dividing each item by overall sum
       results = responses.map(f => (100.0*f)/responses.sum )
+      // work out the labels
+      labels = questionDetails._2.map {case (_, _, _, _, label) => label}
       // collect a map of setYid to its corresponding count
       ysetCountAsMap : Map[String, Int] = summaryStatistics._2
                                           .map { case (questionId, setYid, count) => Map(setYid -> count)}.flatten.toMap
       // collect a map of setYid to its corresponding detail
       ysetWeightsAsMap: Map[String, Option[Double]] = questionDetails._2
-                                          .map { case (questionId, setYid, hasNumericCode, reportingValue) => Map(setYid -> reportingValue)}.flatten.toMap
+                                          .map { case (questionId, setYid, hasNumericCode, reportingValue, label) => Map(setYid -> reportingValue)}.flatten.toMap
       // perform the calculation of the average
       weightedSum = ysetCountAsMap
           .zip(ysetWeightsAsMap)
@@ -65,7 +67,7 @@ case class Report(repo: ReportRepo2) {
           .map({case (weight, count) => weight * count * 1.0}).sum
       weighedAverage = weightedSum/responses.sum
 
-    } yield (Util.uuid(summaryStatistics._1), Result(List("NOT IMPLEMENTED"), responses.toList, results.toList, Some(weighedAverage)))
+    } yield (Util.uuid(summaryStatistics._1), Result(labels.toList, responses.toList, results.toList, Some(weighedAverage)))
 
     // Respond with our map
     Future(monadicJoin)
