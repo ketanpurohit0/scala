@@ -98,6 +98,7 @@ object Helper {
     val m = Map[String, String]()
     val df = Helper.loadCSV(spark, resourceCsvPath)
     val json_schema = Helper.getJsonSchema(spark, df, "match_element")
+    println(json_schema.toDDL)
     val df2 = df.withColumn(
       "match_element",
       from_json(col("match_element"), json_schema, m)
@@ -108,11 +109,15 @@ object Helper {
       "match_element.eventElementType",
       "match_element.details.scoredBy"
     )
-    def lead_lag_columns(f: (String, Int) => Column, prefix: String) = {
+    def lead_lag_columns(
+        lead_or_lag: (String, Int) => Column,
+        prefix: String
+    ) = {
       columnsOfInterest.map(c =>
-        f(c, 1).over(window).as(prefix + c.replace(".", "_"))
+        lead_or_lag(c, 1).over(window).as(prefix + c.replace(".", "_"))
       )
     }
+    // all_cols = Seq("serving_team", "LAG_match_element_seqNum","LAG_.., "*", "LAG_match_element_seqNum")
     val all_cols = Seq(
       col("match_element.server.team").as("serving_team")
     ) ++ lead_lag_columns(lag, "LAG_") ++ Seq(col("*")) ++ lead_lag_columns(
@@ -122,17 +127,28 @@ object Helper {
     val df3 = df2
       .select(all_cols: _*)
       .filter("match_element.eventElementType = 'PointStarted'")
+      // serveid is index number of the serve starting from 1
       .withColumn("serveid", row_number().over(window))
-      .withColumn(
-        "server",
-        when(
-          col("serving_team") === "TeamA",
-          col("match_element.matchStatus.teamAPlayer1")
-        )
-          .otherwise(col("match_element.matchStatus.teamBPlayer1"))
-      )
+//      .withColumn(
+//        "server",
+//        when(
+//          col("serving_team") === "TeamA",
+//          col("match_element.matchStatus.teamAPlayer1")
+//        )
+//          .otherwise(col("match_element.matchStatus.teamBPlayer1"))
+//      )
       .drop("_c0")
 
+//    df3
+//      .select(
+//        "server",
+//        "serving_team",
+//        "match_element.matchStatus.teamAPlayer1",
+//        "match_element.matchStatus.teamBPlayer1"
+//      )
+//      .show(200)
+
+    // just the players details
     val dfMatchPlayers = df2
       .filter(
         "match_element.eventElementType = 'MatchStatusUpdate' and match_element.matchStatus.matchState.state = 'PlayersArriveOnCourt'"
@@ -169,7 +185,7 @@ object Helper {
     //    df3.show(5)
     //    dfMatchPlayers.show(5)
     //    df4.printSchema()
-    //    df4.show(35)
+    df4.show(35)
 
     // Now pivot on LAG_match_element_eventElementType
     val prePivotDf = df4
@@ -320,7 +336,7 @@ object Helper {
 
     val topLevelParent = Option.empty[String]
     val cols = Helper.flattenSchema(df2.schema, topLevelParent)
-    //println(cols.mkString("||"))
+//    println(cols.mkString(",\n"))
 
     val columns_to_select = cols.map(c => col(c).as(c.replace(".", "_")))
 
@@ -383,7 +399,7 @@ object Helper {
           )
         )
       )
-      // deal with nulls in previosSetsScore
+      // deal with nulls in previousSetsScore
       .withColumn("A_WINS", when(col("A_WINS") < 0, 0).otherwise(col("A_WINS")))
       .withColumn("B_WINS", when(col("B_WINS") < 0, 0).otherwise(col("B_WINS")))
       // now put the fixed value in a new column
@@ -400,11 +416,13 @@ object Helper {
     val m = Map[String, String]()
     val df = Helper.loadCSV(spark, resourceCsvPath)
     val json_schema = Helper.getJsonSchema(spark, df, "match_element")
+    // convert match_element from 'string' to struct
     val df2 = df
       .withColumn(
         "match_element",
         from_json(col("match_element"), json_schema, m)
       )
+      // convert message_id to int for ordering to work properly
       .withColumn("message_id", col("message_id").cast("int"))
 
     val w = Window

@@ -8,7 +8,6 @@ import org.apache.spark.sql.functions.{
   concat,
   explode,
   expr,
-  from_json,
   get_json_object,
   lag,
   lead,
@@ -19,7 +18,8 @@ import org.apache.spark.sql.functions.{
   size,
   sum,
   to_json,
-  when
+  when,
+  from_json
 }
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite {
@@ -84,31 +84,77 @@ class Tests extends AnyFunSuite {
 
   }
 
-  test("FlattenSchema") {
-    val df = Helper.flattenSchema(spark, resourceCsvPath)
+  test("mysql") {
+    import spark.implicits._
+    // Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'.
+    val loadDf = spark.read
+      .format("jdbc")
+      .option("url", "jdbc:mysql://localhost:3306/DevTest")
+      .option("driver", "com.mysql.cj.jdbc.Driver")
+      .option("user", "root")
+      .option("password", "Sdy+q8bLwsNB")
+      .option("dbtable", "question")
+      .load()
+      .filter($"questionType" === "TB")
+
+    loadDf.show()
+//    loadDf.printSchema()
+    val m = Map[String, String]()
+    val setYJsonSchema = Helper.getJsonSchema(spark, loadDf, "setY")
+    val setXJsonSchema = Helper.getJsonSchema(spark, loadDf, "setX")
+
+    val df = loadDf
+      .withColumn("setY", from_json($"setY", setYJsonSchema, m))
+      .withColumn("setX", from_json($"setX", setXJsonSchema, m))
+
+    df.show()
 //    df.printSchema()
 
+    val df2 =
+      df.withColumn(
+        "setYid",
+        explode($"setY.options.id")
+      ) //langs.en_GB"))
+
+    df2.printSchema()
+
+    df2
+      .select("questionId", "setYid")
+      .show(100, false)
   }
 
-  test("Requirement_Clean_&_flatten_the_data") {
+  ignore("FlattenSchema") {
+    val df = Helper.flattenSchema(spark, resourceCsvPath)
+    df.printSchema()
+
+  }
+
+  ignore("Requirement_Clean_&_flatten_the_data") {
 
     val resultDf = Helper.cleanAndFlatten(spark, resourceCsvPath)
-//    resultDf.orderBy("match_id","message_id").show()
+    resultDf.filter("PhysioCalled ==1").orderBy("match_id", "message_id").show()
   }
 
-  test("Enrichment_AddSecondServeFlag") {
+  ignore("Enrichment_AddSecondServeFlag") {
     val resultDf = Helper.enrichmentAddSecondFlag(spark, resourceCsvPath)
 //    resultDf.show()
   }
 
-  test("Transformation") {
+  ignore("Transformation") {
     val resultDf = Helper.transformation(spark, resourceCsvPath)
 
-//    resultDf.printSchema()
-//    resultDf.filter("match_element.eventElementType == 'PointScored'").select("message_id", "fixedOverallScore", "match_element.score.overallSetScore").show()
+    resultDf.printSchema()
+    resultDf
+      .filter("match_element.eventElementType == 'PointScored'")
+      .select(
+        "message_id",
+        "fixedOverallScore",
+        "match_element.score.overallSetScore"
+      )
+      .show()
   }
 
-  test("R&D") {
+  ignore("R&D") {
     // add a cumulative number of Aces in the match (regardless of who served the ace)
     val rndDf = Helper.RND(spark, resourceCsvPath)
 //  rndDf.printSchema()
