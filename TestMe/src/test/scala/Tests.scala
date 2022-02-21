@@ -158,7 +158,7 @@ class Tests extends AnyFunSuite {
 
     val questionId = "54657374-696E-6720-5131-343130000000"
 
-    val loadDf = spark.read
+    val loadOptionsDf = spark.read
       .format("jdbc")
       .option("url", "jdbc:mysql://localhost:3306/DevTest")
       .option("driver", "com.mysql.cj.jdbc.Driver")
@@ -169,21 +169,79 @@ class Tests extends AnyFunSuite {
       .filter($"questionId" === s"$questionId")
       .select(Seq("setY", "setX").map(col(_)): _*)
 
-    loadDf.show()
+    // bring it together with 'question'
+
+    val loadQuestionDf = spark.read
+      .format("jdbc")
+      .option("url", "jdbc:mysql://localhost:3306/DevTest")
+      .option("driver", "com.mysql.cj.jdbc.Driver")
+      .option("user", "root")
+      .option("password", "Sdy+q8bLwsNB")
+      .option("dbtable", "question")
+      .load()
+      .filter(
+        $"questionType" === "TB"
+      )
+
+    val m = Map[String, String]()
+    val setYJsonSchema = Helper.getJsonSchema(spark, loadQuestionDf, "setY")
+    val setXJsonSchema = Helper.getJsonSchema(spark, loadQuestionDf, "setX")
+
+    // convert from 'string' to json struct using schema obtained earlier
+    val questionDf = loadQuestionDf
+      .filter($"questionId" === s"$questionId")
+      .withColumn("setY", from_json($"setY", setYJsonSchema, m))
+      .withColumn("setX", from_json($"setX", setXJsonSchema, m))
+
+    val columnsOfInterest = Seq(
+      "options.id",
+      "options.langs.en_GB.text",
+      "options.reportingValue"
+    )
+
+    val questionDf2 = questionDf
+      .select(explode($"setX.options").as("options"))
+      .select(columnsOfInterest.head, columnsOfInterest.tail: _*)
+      .withColumn("id", upper($"id"))
+      .withColumnRenamed("id", "setXid")
+
+    questionDf2.show()
+
+    loadOptionsDf.show()
 //    loadDf.printSchema()
 
-    val pivotedDf = loadDf
+    val enrichedOptionsDf = loadOptionsDf
+      .join(
+        questionDf2,
+        loadOptionsDf.col("setX") === questionDf2.col("setXid")
+      )
+//      .withColumn(
+//        "setX",
+//        concat(Seq(col("text"), lit(" ("), col("reportingValue"), lit(")")): _*)
+//      )
+
+    enrichedOptionsDf.show()
+
+    val reportingValueDf = enrichedOptionsDf
+      .groupBy("setY") //, "setX")
+      .agg(sum("reportingValue").as("sumReportingValue"))
+
+    val pivotedDf = enrichedOptionsDf
       .groupBy("setY")
       .pivot($"setX")
       .agg(count(lit(1)))
       .na
       .fill(0)
 
-    val summaryDf = loadDf
+    val summaryDf = loadOptionsDf
       .groupBy("setY")
       .count()
 
-    val interimDf = summaryDf.join(pivotedDf, "setY")
+    val interimDf = summaryDf
+      .join(pivotedDf, "setY")
+//      .join(reportingValueDf, "setY")
+//      .withColumnRenamed("sumReportingValue", "Average")
+//      .withColumn("Average", col("Average") / col("count"))
 
     val columnsToConvertToPCT =
       interimDf.columns.filter(c => !(c == "setY" || c == "count"))
@@ -195,9 +253,9 @@ class Tests extends AnyFunSuite {
       )
     }
 
-    summaryDf.show()
-    pivotedDf.show()
-    interimDf.show()
+//    summaryDf.show()
+//    pivotedDf.show()
+//    interimDf.show()
     resultDf.show()
     resultDf.printSchema()
 
