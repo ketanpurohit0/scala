@@ -4,6 +4,7 @@ import org.scalatest.funsuite.AnyFunSuite
 import org.apache.spark.sql.functions.{
   array,
   arrays_zip,
+  avg,
   col,
   concat,
   count,
@@ -148,7 +149,7 @@ class Tests extends AnyFunSuite {
       .filter($"questionId" === s"$questionId")
       .select(Seq("setY", "setX").map(col(_)): _*)
 
-//    loadDf.show()
+    loadDf.show()
 //    loadDf.printSchema()
 
     val pivotedDf = loadDf
@@ -158,8 +159,16 @@ class Tests extends AnyFunSuite {
       .na
       .fill(0)
 
+    val summaryDf = loadDf
+      .groupBy("setY")
+      .count()
+
+    val resultDf = summaryDf.join(pivotedDf, "setY")
+
+    summaryDf.show()
     pivotedDf.show()
-    pivotedDf.printSchema()
+    resultDf.show()
+//    pivotedDf.printSchema()
 
   }
 
