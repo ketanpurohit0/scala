@@ -23,6 +23,7 @@ import org.apache.spark.sql.functions.{
   to_json,
   when
 }
+import org.apache.spark.sql.types.DataTypes.createDecimalType
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite {
 
@@ -163,12 +164,23 @@ class Tests extends AnyFunSuite {
       .groupBy("setY")
       .count()
 
-    val resultDf = summaryDf.join(pivotedDf, "setY")
+    val interimDf = summaryDf.join(pivotedDf, "setY")
+
+    val columnsToConvertToPCT =
+      interimDf.columns.filter(c => !(c == "setY" || c == "count"))
+
+    val resultDf = columnsToConvertToPCT.foldLeft(interimDf) { (df, c) =>
+      df.withColumn(
+        c,
+        (lit(100.0) * $"$c" / $"count")
+      )
+    }
 
     summaryDf.show()
     pivotedDf.show()
+    interimDf.show()
     resultDf.show()
-//    pivotedDf.printSchema()
+    resultDf.printSchema()
 
   }
 
