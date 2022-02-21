@@ -159,6 +159,7 @@ class Tests extends AnyFunSuite {
 
     val questionId = "54657374-696E-6720-5131-343130000000"
 
+    // read the 'surveydataopt' from db, just the setY and setX
     val loadOptionsDf = spark.read
       .format("jdbc")
       .option("url", "jdbc:mysql://localhost:3306/DevTest")
@@ -170,7 +171,7 @@ class Tests extends AnyFunSuite {
       .filter($"questionId" === s"$questionId")
       .select(Seq("setY", "setX").map(col(_)): _*)
 
-    // bring it together with 'question'
+    // read the 'question' from db
 
     val loadQuestionDf = spark.read
       .format("jdbc")
@@ -184,6 +185,8 @@ class Tests extends AnyFunSuite {
         $"questionType" === "TB"
       )
 
+    // determine schema for each of the two columns (to help 'grok' the table)
+    // see explori_test_output.txt
     val m = Map[String, String]()
     val setYJsonSchema = Helper.getJsonSchema(spark, loadQuestionDf, "setY")
     val setXJsonSchema = Helper.getJsonSchema(spark, loadQuestionDf, "setX")
@@ -194,12 +197,18 @@ class Tests extends AnyFunSuite {
       .withColumn("setY", from_json($"setY", setYJsonSchema, m))
       .withColumn("setX", from_json($"setX", setXJsonSchema, m))
 
+//    questionDf.printSchema()
+
     val columnsOfInterest = Seq(
       "options.id",
       "options.langs.en_GB.text",
       "options.reportingValue"
     )
 
+    // explode the array so each element in array becomes it's own row
+    // only keep the columns of interest
+    // coerce the id (setXid) to uppercase
+    // rename the column from 'id' to 'setXid'
     val questionDf2 = questionDf
       .select(explode($"setX.options").as("options"))
       .select(columnsOfInterest.head, columnsOfInterest.tail: _*)
@@ -211,6 +220,8 @@ class Tests extends AnyFunSuite {
 //    loadOptionsDf.show()
 //    loadDf.printSchema()
 
+    // change the values in setX column from uuid to a concatenation of relevant
+    // fields (text + '( ' + reportingValue + ')')
     val enrichedOptionsDf = loadOptionsDf
       .join(
         questionDf2,
@@ -223,10 +234,14 @@ class Tests extends AnyFunSuite {
 
 //    enrichedOptionsDf.show()
 
+    // sum up reportingValue over each setY item
     val reportingValueDf = enrichedOptionsDf
-      .groupBy("setY") //, "setX")
+      .groupBy("setY")
       .agg(sum("reportingValue").as("sumReportingValue"))
 
+    // pivot on setX column values - each setX column value
+    // becomes a column in its own right.
+    // Apply a null fill
     val pivotedDf = enrichedOptionsDf
       .groupBy("setY")
       .pivot($"setX")
@@ -234,16 +249,16 @@ class Tests extends AnyFunSuite {
       .na
       .fill(0)
 
+    // take a count of setY (i.e response count)
     val summaryDf = loadOptionsDf
       .groupBy("setY")
       .count()
 
+    // stitch together with pivot data
     val interimDf = summaryDf
       .join(pivotedDf, "setY")
-//      .join(reportingValueDf, "setY")
-//      .withColumnRenamed("sumReportingValue", "Average")
-//      .withColumn("Average", col("Average") / col("count"))
 
+    // We want to convert these fields to their PCT equivalent
     val columnsToConvertToPCT =
       interimDf.columns.filter(c => !(c == "setY" || c == "count"))
 
@@ -253,6 +268,8 @@ class Tests extends AnyFunSuite {
         round(lit(100.0) * $"$c" / $"count", 2)
       )
     }
+
+    // Voila the final result
 
     val resultDf = interimResultDf
       .join(reportingValueDf, "setY")
