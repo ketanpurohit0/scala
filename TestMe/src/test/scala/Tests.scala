@@ -21,7 +21,8 @@ import org.apache.spark.sql.functions.{
   size,
   sum,
   to_json,
-  when
+  when,
+  upper
 }
 import org.apache.spark.sql.types.DataTypes.createDecimalType
 import org.apache.spark.sql.types.{DataType, StructType}
@@ -114,8 +115,26 @@ class Tests extends AnyFunSuite {
       .withColumn("setY", from_json($"setY", setYJsonSchema, m))
       .withColumn("setX", from_json($"setX", setXJsonSchema, m))
 
-    df.show()
+//    df.show()
     df.printSchema()
+
+    val columnsOfInterest = Seq(
+      "setX.options.id",
+      "setX.options.langs.en_GB.text",
+      "setX.options.reportingValue"
+    )
+    df.select(columnsOfInterest.head, columnsOfInterest.tail: _*).show()
+
+    val columnsOfInterest2 = Seq(
+      "options.id",
+      "options.langs.en_GB.text",
+      "options.reportingValue"
+    )
+
+    df.select(explode($"setX.options").as("options"))
+      .select(columnsOfInterest2.head, columnsOfInterest2.tail: _*)
+      .withColumn("id", upper($"id"))
+      .show()
 
     val df2 =
       df.withColumn(
@@ -123,11 +142,11 @@ class Tests extends AnyFunSuite {
         explode($"setY.options.id")
       ) //langs.en_GB"))
 
-    df2.printSchema()
+//    df2.printSchema()
 
-    df2
-      .select("questionId", "setYid")
-      .show(100, false)
+//    df2
+//      .select("questionId", "setYid")
+//      .show(100, false)
 
     df.select($"questionId", explode($"setX.options.id")).show(100, false)
   }
