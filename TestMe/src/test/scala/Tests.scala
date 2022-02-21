@@ -215,10 +215,10 @@ class Tests extends AnyFunSuite {
         questionDf2,
         loadOptionsDf.col("setX") === questionDf2.col("setXid")
       )
-//      .withColumn(
-//        "setX",
-//        concat(Seq(col("text"), lit(" ("), col("reportingValue"), lit(")")): _*)
-//      )
+      .withColumn(
+        "setX",
+        concat(Seq(col("text"), lit(" ("), col("reportingValue"), lit(")")): _*)
+      )
 
     enrichedOptionsDf.show()
 
@@ -252,6 +252,13 @@ class Tests extends AnyFunSuite {
         (lit(100.0) * $"$c" / $"count")
       )
     }
+
+    resultDf
+      .join(reportingValueDf, "setY")
+      .withColumnRenamed("sumReportingValue", "Average")
+      .withColumnRenamed("count", "Responses")
+      .withColumn("Average", $"Average" / $"Responses")
+      .show()
 
 //    summaryDf.show()
 //    pivotedDf.show()
