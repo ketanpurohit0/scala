@@ -6,8 +6,10 @@ import org.apache.spark.sql.functions.{
   arrays_zip,
   col,
   concat,
+  count,
   explode,
   expr,
+  from_json,
   get_json_object,
   lag,
   lead,
@@ -18,8 +20,7 @@ import org.apache.spark.sql.functions.{
   size,
   sum,
   to_json,
-  when,
-  from_json
+  when
 }
 import org.apache.spark.sql.types.{DataType, StructType}
 class Tests extends AnyFunSuite {
@@ -84,7 +85,7 @@ class Tests extends AnyFunSuite {
 
   }
 
-  test("mysql") {
+  test("mysql_explore_question") {
     import spark.implicits._
     // Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'.
     val loadDf = spark.read
@@ -95,7 +96,9 @@ class Tests extends AnyFunSuite {
       .option("password", "Sdy+q8bLwsNB")
       .option("dbtable", "question")
       .load()
-      .filter($"questionType" === "TB")
+      .filter(
+        $"questionType" === "TB"
+      )
 
     loadDf.show()
 //    loadDf.printSchema()
@@ -103,12 +106,14 @@ class Tests extends AnyFunSuite {
     val setYJsonSchema = Helper.getJsonSchema(spark, loadDf, "setY")
     val setXJsonSchema = Helper.getJsonSchema(spark, loadDf, "setX")
 
+    // convert from 'string' to json struct using schema obtained earlier
     val df = loadDf
+      .filter($"questionId" === "54657374-696E-6720-5131-343130000000")
       .withColumn("setY", from_json($"setY", setYJsonSchema, m))
       .withColumn("setX", from_json($"setX", setXJsonSchema, m))
 
     df.show()
-//    df.printSchema()
+    df.printSchema()
 
     val df2 =
       df.withColumn(
@@ -121,6 +126,41 @@ class Tests extends AnyFunSuite {
     df2
       .select("questionId", "setYid")
       .show(100, false)
+
+    df.select($"questionId", explode($"setX.options.id")).show(100, false)
+  }
+
+  test("mysql explore surveydatopt") {
+
+    import spark.implicits._
+    // Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'.
+
+    val questionId = "54657374-696E-6720-5131-343130000000"
+
+    val loadDf = spark.read
+      .format("jdbc")
+      .option("url", "jdbc:mysql://localhost:3306/DevTest")
+      .option("driver", "com.mysql.cj.jdbc.Driver")
+      .option("user", "root")
+      .option("password", "Sdy+q8bLwsNB")
+      .option("dbtable", "surveydataopt")
+      .load()
+      .filter($"questionId" === s"$questionId")
+      .select(Seq("setY", "setX").map(col(_)): _*)
+
+//    loadDf.show()
+//    loadDf.printSchema()
+
+    val pivotedDf = loadDf
+      .groupBy("setY")
+      .pivot($"setX")
+      .agg(count(lit(1)))
+      .na
+      .fill(0)
+
+    pivotedDf.show()
+    pivotedDf.printSchema()
+
   }
 
   ignore("FlattenSchema") {
