@@ -22,7 +22,8 @@ import org.apache.spark.sql.functions.{
   sum,
   to_json,
   when,
-  upper
+  upper,
+  round
 }
 import org.apache.spark.sql.types.DataTypes.createDecimalType
 import org.apache.spark.sql.types.{DataType, StructType}
@@ -205,9 +206,9 @@ class Tests extends AnyFunSuite {
       .withColumn("id", upper($"id"))
       .withColumnRenamed("id", "setXid")
 
-    questionDf2.show()
+//    questionDf2.show()
 
-    loadOptionsDf.show()
+//    loadOptionsDf.show()
 //    loadDf.printSchema()
 
     val enrichedOptionsDf = loadOptionsDf
@@ -220,7 +221,7 @@ class Tests extends AnyFunSuite {
         concat(Seq(col("text"), lit(" ("), col("reportingValue"), lit(")")): _*)
       )
 
-    enrichedOptionsDf.show()
+//    enrichedOptionsDf.show()
 
     val reportingValueDf = enrichedOptionsDf
       .groupBy("setY") //, "setX")
@@ -246,19 +247,18 @@ class Tests extends AnyFunSuite {
     val columnsToConvertToPCT =
       interimDf.columns.filter(c => !(c == "setY" || c == "count"))
 
-    val resultDf = columnsToConvertToPCT.foldLeft(interimDf) { (df, c) =>
+    val interimResultDf = columnsToConvertToPCT.foldLeft(interimDf) { (df, c) =>
       df.withColumn(
         c,
-        (lit(100.0) * $"$c" / $"count")
+        round(lit(100.0) * $"$c" / $"count", 2)
       )
     }
 
-    resultDf
+    val resultDf = interimResultDf
       .join(reportingValueDf, "setY")
       .withColumnRenamed("sumReportingValue", "Average")
       .withColumnRenamed("count", "Responses")
-      .withColumn("Average", $"Average" / $"Responses")
-      .show()
+      .withColumn("Average", round($"Average" / $"Responses", 2))
 
 //    summaryDf.show()
 //    pivotedDf.show()
