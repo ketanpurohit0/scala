@@ -40,12 +40,11 @@ class ShoppingCart {
       readableName -> effectiveQuantity(quantity, Offers.offers.getOrElse(readableName, (1, 1)))
     })
 
-    val mutableMap = mutable.Map[String, Int]()
-    namedEffectiveQuantities.foreach({ case (readableName, quantity) =>
-      mutableMap(readableName) = quantity
-    })
+    val mutableMap = mutable.Map[String, Int](namedEffectiveQuantities.toSeq: _*)
 
     // deal with ensemble offers, pick combinations of 2 items each
+    // NOT clear if just one item is free (we can adjust logic)
+    // NOT clear if only one free discount can be applied
     mutableMap.keys.toList
       .combinations(2)
       .foreach(combination => {

@@ -3,7 +3,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class Tests extends AnyFunSuite {
 
-  test("shoppingCart") {
+  test("shoppingCartWithSimpleOffers") {
 
     // (nApples, nOranges, nBananas, offerWillApply)
     val tests =
@@ -14,6 +14,43 @@ class Tests extends AnyFunSuite {
         (0, 0, 1, false),
         (0, 1, 1, false),
         (1, 0, 1, false),
+        (7, 2, 1, true)
+      )
+
+    tests.foreach {
+      case (nApples, nOranges, nBananas, offerWillApply) => {
+        val shoppingItems =
+          List.fill(nApples)(Apple()) ++ List.fill(nOranges)(Orange()) ++ List.fill(nBananas)(Bananas())
+        val shoppingCart = new ShoppingCart()
+
+        shoppingItems.foreach(i => shoppingCart.addItem(i))
+
+        val result = shoppingCart.tillUpOffers()
+        val expected =
+          (nApples * Prices.prices(Apple.readableName) + nOranges * Prices.prices(
+            Orange.readableName
+          ) + nBananas * Prices.prices(Bananas.readableName)) / 100.0
+        if (offerWillApply) {
+          assert(result < expected)
+        } else {
+          assert(result == expected)
+        }
+
+      }
+    }
+
+  }
+
+  test("shoppingCartWithEnsembleOffers") {
+    // (nApples, nOranges, nBananas, ensembleWillApply)
+    val tests =
+      Seq(
+        (3, 1, 1, true),
+        (1, 1, 1, true),
+        (2, 2, 1, true),
+        (0, 0, 1, false),
+        (0, 1, 1, false),
+        (1, 0, 1, true),
         (7, 2, 1, true)
       )
 
@@ -38,7 +75,6 @@ class Tests extends AnyFunSuite {
 
       }
     }
-
   }
 
   ignore("simpleOffers") {
@@ -77,7 +113,7 @@ class Tests extends AnyFunSuite {
     }
   }
 
-  test("ensembleOffer") {
+  ignore("ensembleOffer") {
 
     // product1, product2, expected To have ensemble offer
     val tests = Seq(
@@ -95,7 +131,7 @@ class Tests extends AnyFunSuite {
     })
   }
 
-  test("ensembleOffer2") {
+  ignore("ensembleOffer2") {
     val tests = Seq(
       List(Bananas, Apple, Orange).map(_.readableName),
       List(Apple, Orange).map(_.readableName),
