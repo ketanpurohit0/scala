@@ -45,18 +45,17 @@ class ShoppingCart {
     // deal with ensemble offers, pick combinations of 2 items each
     // NOT clear if just one item is free (we can adjust logic)
     // NOT clear if only one free discount can be applied
+    // if there is an ensemble offer, then take the cheaper product
+    // and zero it down
     mutableMap.keys.toList
       .combinations(2)
       .foreach(combination => {
         if (Offers.hasEnsembleOffer(combination(0), combination(1))) {
           // This combination appears to have a ensemble offer, so which one is cheaper
           val cheaperProduct = Prices.cheaperOfTwoProducts(combination(0), combination(1))
-          println(s"zero down $cheaperProduct")
           mutableMap(cheaperProduct) = 0
         }
       })
-
-    println(mutableMap)
 
     val totalSumInPence = mutableMap
       .map({ case (readableName, quantity) => quantity * Prices.prices(readableName) })
