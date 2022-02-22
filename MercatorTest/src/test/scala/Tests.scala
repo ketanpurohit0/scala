@@ -24,4 +24,10 @@ class Tests extends AnyFunSuite {
     }
 
   }
+
+  test("simpleOffers") {
+    val shoppingItems = List.fill(6)(Apple()) ++ List.fill(4)(Orange())
+    val x = shoppingItems.groupBy(si => si.readableName).map(y => y._1 -> y._2.count(_ => true))
+    println(x)
+  }
 }
