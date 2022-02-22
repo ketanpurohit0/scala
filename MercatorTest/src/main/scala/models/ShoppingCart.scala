@@ -8,7 +8,7 @@ class ShoppingCart {
   }
 
   def tillUp(): Double = {
-    val totalSumInPence = shoppingItems.map(f => f.costPerUnitInPence).sum
+    val totalSumInPence = shoppingItems.map(f => Prices.prices(f.readableName)).sum
     totalSumInPence / 100.0
   }
 
