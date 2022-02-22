@@ -5,20 +5,31 @@ class Tests extends AnyFunSuite {
 
   test("shoppingCart") {
 
-    // (nApples, nOranges, offerWillApply)
+    // (nApples, nOranges, nBananas, offerWillApply)
     val tests =
-      Seq((3, 1, true), (1, 1, false), (2, 2, true), (0, 0, false), (0, 1, false), (1, 0, false), (7, 2, true))
+      Seq(
+        (3, 1, 1, true),
+        (1, 1, 1, false),
+        (2, 2, 1, true),
+        (0, 0, 1, false),
+        (0, 1, 1, false),
+        (1, 0, 1, false),
+        (7, 2, 1, true)
+      )
 
     tests.foreach {
-      case (nApples, nOranges, offerWillApply) => {
-        val shoppingItems = List.fill(nApples)(Apple()) ++ List.fill(nOranges)(Orange())
+      case (nApples, nOranges, nBananas, offerWillApply) => {
+        val shoppingItems =
+          List.fill(nApples)(Apple()) ++ List.fill(nOranges)(Orange()) ++ List.fill(nBananas)(Bananas())
         val shoppingCart = new ShoppingCart()
 
         shoppingItems.foreach(i => shoppingCart.addItem(i))
 
-        val result = shoppingCart.tillUpOffers()
+        val result = shoppingCart.tillUpOffersAndEnsembleOffers()
         val expected =
-          (nApples * Prices.prices(Apple.readableName) + nOranges * Prices.prices(Orange.readableName)) / 100.0
+          (nApples * Prices.prices(Apple.readableName) + nOranges * Prices.prices(
+            Orange.readableName
+          ) + nBananas * Prices.prices(Bananas.readableName)) / 100.0
         if (offerWillApply) {
           assert(result < expected)
         } else {

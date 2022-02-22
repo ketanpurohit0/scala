@@ -1,5 +1,7 @@
 package models
 
+import scala.collection.mutable
+
 class ShoppingCart {
   private var shoppingItems = List[ShoppingItem]()
 
@@ -22,6 +24,42 @@ class ShoppingCart {
     })
 
     val totalSumInPence = namedEffectiveQuantities
+      .map({ case (readableName, quantity) => quantity * Prices.prices(readableName) })
+      .sum
+
+    totalSumInPence / 100.0
+
+  }
+
+  def tillUpOffersAndEnsembleOffers(): Double = {
+    val groupByNameAndCount = shoppingItems
+      .groupBy(si => si.readableName)
+      .map({ case (readableName, collection) => readableName -> collection.count(_ => true) })
+
+    val namedEffectiveQuantities = groupByNameAndCount.map({ case (readableName, quantity) =>
+      readableName -> effectiveQuantity(quantity, Offers.offers.getOrElse(readableName, (1, 1)))
+    })
+
+    val mutableMap = mutable.Map[String, Int]()
+    namedEffectiveQuantities.foreach({ case (readableName, quantity) =>
+      mutableMap(readableName) = quantity
+    })
+
+    // deal with ensemble offers, pick combinations of 2 items each
+    mutableMap.keys.toList
+      .combinations(2)
+      .foreach(combination => {
+        if (Offers.hasEnsembleOffer(combination(0), combination(1))) {
+          // This combination appears to have a ensemble offer, so which one is cheaper
+          val cheaperProduct = Prices.cheaperOfTwoProducts(combination(0), combination(1))
+          println(s"zero down $cheaperProduct")
+          mutableMap(cheaperProduct) = 0
+        }
+      })
+
+    println(mutableMap)
+
+    val totalSumInPence = mutableMap
       .map({ case (readableName, quantity) => quantity * Prices.prices(readableName) })
       .sum
 
