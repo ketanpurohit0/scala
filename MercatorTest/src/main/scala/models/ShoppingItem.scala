@@ -25,3 +25,11 @@ object Orange extends ShoppingItem {
   def apply(): Orange = new Orange()
 
 }
+
+case class Bananas() extends ShoppingItem {
+  override def readableName: String = Bananas.readableName
+}
+
+object Bananas extends ShoppingItem {
+  override def readableName: String = "Bananas"
+}
