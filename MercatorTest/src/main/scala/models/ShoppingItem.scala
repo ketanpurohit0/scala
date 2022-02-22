@@ -15,6 +15,7 @@ object Apple extends ShoppingItem {
   override def readableName = "Apple"
 
   def apply(): Apple = new Apple()
+
 }
 
 case class Orange() extends ShoppingItem {
@@ -27,4 +28,5 @@ object Orange extends ShoppingItem {
   override def readableName = "Orange"
 
   def apply(): Orange = new Orange()
+
 }
