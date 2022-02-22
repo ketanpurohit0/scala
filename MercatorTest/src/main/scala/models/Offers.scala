@@ -8,12 +8,17 @@ object Offers {
     Bananas.readableName -> (2, 1)
   )
 
+  // (product1, product2) which are in ensemble offer
   val ensembleOffers = Map(
     (Bananas.readableName, Apple.readableName) -> 1
   )
 
   def hasEnsembleOffer(productOne: String, productTwo: String): Boolean = {
-    ensembleOffers.contains((productOne, productTwo)) || ensembleOffers.contains((productTwo, productOne))
+    if (productOne == productTwo) {
+      false
+    } else {
+      ensembleOffers.contains((productOne, productTwo)) || ensembleOffers.contains((productTwo, productOne))
+    }
   }
 
 }

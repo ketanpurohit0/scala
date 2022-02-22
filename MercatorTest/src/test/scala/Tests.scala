@@ -83,4 +83,23 @@ class Tests extends AnyFunSuite {
       }
     })
   }
+
+  test("ensembleOffer2") {
+    val tests = Seq(
+      List(Bananas, Apple, Orange).map(_.readableName),
+      List(Apple, Orange).map(_.readableName),
+      List(Apple, Bananas).map(_.readableName)
+    )
+
+    tests.foreach(items => {
+      println("*")
+      items.combinations(2).foreach({ c => println(c, Offers.hasEnsembleOffer(c(0), c(1))) })
+      val combos = items.combinations(2).foreach { c =>
+        println(c)
+        println(Offers.hasEnsembleOffer(c(0), c(1)))
+        println(Prices.cheaperOfTwoProducts(c(0), c(1)))
+
+      }
+    })
+  }
 }
