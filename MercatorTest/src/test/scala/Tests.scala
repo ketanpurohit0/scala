@@ -1,4 +1,4 @@
-import models.{Apple, Orange, Prices, ShoppingCart, ShoppingItem}
+import models.{Apple, Bananas, Offers, Orange, Prices, ShoppingCart, ShoppingItem}
 import org.scalatest.funsuite.AnyFunSuite
 
 class Tests extends AnyFunSuite {
@@ -64,5 +64,23 @@ class Tests extends AnyFunSuite {
       groupsOfM * payN + remainderQty
 
     }
+  }
+
+  test("ensembleOffer") {
+
+    // product1, product2, expected To have ensemble offer
+    val tests = Seq(
+      (Bananas.readableName, Apple.readableName, true),
+      (Apple.readableName, Orange.readableName, false),
+      (Apple.readableName, Bananas.readableName, true)
+    )
+
+    tests.foreach({
+      case (product1, product2, expectation) => {
+        val result = Offers.hasEnsembleOffer(product1, product2)
+        assert(result == expectation)
+
+      }
+    })
   }
 }
