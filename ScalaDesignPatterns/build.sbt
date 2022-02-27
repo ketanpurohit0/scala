@@ -1,4 +1,4 @@
-name := "TeralyticsTest"
+name := "ScalaDesignPatterns"
 
 version := "0.1"
 
