@@ -26,13 +26,27 @@ package object Monoids {
 object MonoidOps {
   def fold[T](list: List[T], monoid: Monoid[T]) = list.foldLeft(monoid.identity) { monoid.op }
 
-  def fold[T, Y](list: List[T], monoid: Monoid[Y])(f: T => Y): Y = {
+  def fold1[T](list: List[T], monoid: Monoid[T]) = foldMap2(list, monoid) { identity }
+  def fold2[T](list: List[T], monoid: Monoid[T]) = foldMap(list, monoid) { identity }
+
+  def foldMap[T, Y](list: List[T], monoid: Monoid[Y])(f: T => Y): Y = {
     list.map(f).foldLeft(monoid.identity) { monoid.op }
   }
 
-  def foldMap[T, Y](list: List[T], monoid: Monoid[Y])(f: T => Y): Y = {
+  def foldMap2[T, Y](list: List[T], monoid: Monoid[Y])(f: T => Y): Y = {
     list.foldLeft(monoid.identity) { case (y, t) =>
       monoid.op(y, f(t))
+    }
+  }
+
+  def splitFold[T, Y](list: List[T], monoid: Monoid[Y])(f: T => Y): Y = {
+    list.length match {
+      case 0 => monoid.identity
+      case 1 => f(list(0))
+      case len => {
+        val (leftSplit, rightSplit) = list.splitAt(len / 2)
+        monoid.op(splitFold(leftSplit, monoid)(f), splitFold(rightSplit, monoid)(f))
+      }
     }
   }
 }
@@ -68,9 +82,16 @@ object MonoidFolding extends App {
   val rs3 = MonoidOps.fold[String](strings, stringConcat)
   val rs4 = MonoidOps.fold[Int](numbers, integerAdd)
   val rs5 = MonoidOps.fold[Int](numbers, integerMult)
-  println(rs3, rs4, rs5)
+  val rs6 = MonoidOps.fold1[String](strings, stringConcat)
+  val rs7 = MonoidOps.fold2[Int](numbers, integerAdd)
+  println(rs3, rs4, rs5, rs6, rs7)
 
-  val rs6 = MonoidOps.fold[String, Int](strings, integerAdd) { s => s.length }
-  val rs7 = MonoidOps.foldMap[String, Int](strings, integerAdd) { s => s.length }
-  println(rs6, rs7)
+  val rs8 = MonoidOps.foldMap[String, Int](strings, integerAdd) { s => s.length }
+  val rs9 = MonoidOps.foldMap2[String, Int](strings, integerAdd) { s => s.length }
+  println(rs8, rs9)
+
+  // splitFold
+  val rs10 = MonoidOps.splitFold(List.fill(300)("A"), integerAdd) { s => s.length }
+  println(rs10)
+
 }
