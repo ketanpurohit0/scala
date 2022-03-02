@@ -37,6 +37,20 @@ package object Monoids {
       }
     }
   }
+
+  def mappedMonoid[K, V](monoid: Monoid[V]): Monoid[Map[K, V]] = {
+    new Monoid[Map[K, V]] {
+      override val identity: Map[K, V] = Map()
+
+      override def op(l: Map[K, V], r: Map[K, V]): Map[K, V] = {
+        (l.keySet ++ r.keySet).foldLeft(identity) {
+          case (mapped, k) => {
+            mapped.updated(k, monoid.op(l.getOrElse(k, monoid.identity), r.getOrElse(k, monoid.identity)))
+          }
+        }
+      }
+    }
+  }
 }
 
 object MonoidOps {
@@ -119,4 +133,11 @@ object MonoidFolding extends App {
   val rcmn2 = MonoidOps.splitFold(numbers, ccMn) { n => (1, (n, n)) }
   println(rcmn2)
 
+}
+
+object MonoidFeatureCountApp extends App {
+  val features = List("Apple", "Apple", "Bananas", "Pear", "Orange", "Orange")
+  val mapMonoid = mappedMonoid[String, Int](integerAdd)
+  val rs = MonoidOps.splitFold(features, mapMonoid) { i => Map(i -> 1) }
+  println(rs)
 }
