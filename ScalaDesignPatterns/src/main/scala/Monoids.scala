@@ -21,6 +21,22 @@ package object Monoids {
 
     override def op(l: String, r: String): String = l + r
   }
+
+  def composedMonoid[T, Y](tmonoid: Monoid[T], ymonoid: Monoid[Y]): Monoid[(T, Y)] = {
+    new Monoid[(T, Y)] {
+      override val identity: (T, Y) = (tmonoid.identity, ymonoid.identity)
+
+//      override def op(l: (T, Y), r: (T, Y)): (T, Y) = {
+//        (tmonoid.op(l._1, r._1), ymonoid.op(l._2, r._2))
+//      }
+
+      override def op(l: (T, Y), r: (T, Y)): (T, Y) = {
+        (l, r) match {
+          case ((lt, ly), (rt, ry)) => (tmonoid.op(lt, rt), ymonoid.op(ly, ry))
+        }
+      }
+    }
+  }
 }
 
 object MonoidOps {
@@ -54,7 +70,7 @@ object MonoidOps {
 import Monoids._
 object MonoidFolding extends App {
   val strings = List("a", "b", "c")
-  val numbers = List(1, 2, 3)
+  val numbers = List(1, 2, 3, 4)
   val stringZero = ""
   //
   val rs = strings.foldLeft(stringZero) {
@@ -93,5 +109,14 @@ object MonoidFolding extends App {
   // splitFold
   val rs10 = MonoidOps.splitFold(List.fill(300)("A"), integerAdd) { s => s.length }
   println(rs10)
+
+  // compose monoid
+  val composedMn = composedMonoid(integerAdd, integerMult)
+  val rcmn1 = MonoidOps.splitFold(numbers, composedMn) { n => (n, n) }
+  println(rcmn1)
+
+  val ccMn = composedMonoid(integerAdd, composedMn)
+  val rcmn2 = MonoidOps.splitFold(numbers, ccMn) { n => (1, (n, n)) }
+  println(rcmn2)
 
 }
