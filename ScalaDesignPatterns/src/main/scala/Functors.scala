@@ -79,4 +79,5 @@ object OptionsEx1 extends App {
   val r2 = for {
     f_1 <- f
   } yield f_1
+
 }
